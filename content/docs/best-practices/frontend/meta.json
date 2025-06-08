@@ -1,0 +1,10 @@
+{
+  "title": "Frontend",
+  "defaultOpen": true,
+  "pages": [
+    "best_practices",
+    "principles",
+    "architecture", 
+    "stack_tooling"
+  ]
+} 

@@ -1,0 +1,79 @@
+---
+title: Ant Design Chart Customization
+---
+
+
+## Scope
+
+* There should be 2 input fields for x and y-axis values as an array.
+* A button for plotting values.
+* Users should be able to see the plotted line graph below the input fields.
+
+## Guidelines
+
+* UI should be interactive and responsive.
+* Should use Ant Design (antd) charts for the graph.
+
+## Implementation
+
+### Phase 1
+
+#### Tasks
+
+* Explore Graph Documentation.
+* Setup Project.
+* Typescript with Next.js as the Primary Framework.
+* Configure Ant Design UI library.
+* Setup Linter.
+* Setup Build Scripts.
+
+#### Expectations
+
+* Get familiar with Ant Design charts.
+* Get familiar with next.config.js options.
+* Follow naming conventions for components and props (Airbnb style guide).
+
+### Phase 2
+
+#### Tasks
+
+* Create an intuitive UI for plotting the graph.
+* Allow users to change axis data.
+* Allow users to plot the data.
+* Plot data on a line graph.
+
+#### Expectations
+
+* Ensure a seamless user experience across various screen sizes and devices (including 5k screens).
+* Implement well-defined component patterns (container/layout/UI) and use composition to build a modular and maintainable codebase.
+* Axis intersection points should be visible.
+* The graph area should be gradient.
+* Users should be able to see the axis info on hover over the graph area.
+
+### Phase 3
+
+#### Tasks
+
+* Use a custom tooltip for a better user experience.
+* Draw a line parallel to the x-axis position at the average of the y-axis.
+* When the user hovers over the average line, a tooltip should be shown showcasing the average of the y-axis.
+
+Expectations
+
+* The custom tooltip should provide clear and concise information about the data point being hovered over, enhancing the user's understanding of the graph.
+* The line parallel to the x-axis representing the average of the y-axis values should be accurately positioned and visually distinguishable from other elements on the graph.
+* The tooltip triggered by hovering over the average line should display the calculated average of the y-axis values, ensuring users can easily interpret this important metric.
+
+### Phase 4
+
+#### Tasks
+
+* Adjust the axis minimum and maximum values to closely match the actual data values, enhancing visualization accuracy.
+* Implement padding on the y-axis, ensuring there is space added at both the top and bottom to prevent the axis's minimum and maximum values from aligning with the graph's edges.
+* Configure the primary tooltip activation to trigger only when the mouse cursor approaches or hovers in proximity to the intersection points on the graph.
+
+Expectations
+
+* The axis adjustments should result in a graph where the data points are clearly displayed within the axis limits, providing an accurate representation of the data.
+* Padding on the y-axis should create visual separation between the axis limits and the graph edges, preventing any overlap and improving the graph's aesthetic appeal.
+* The primary tooltip activation should enhance user interaction by displaying relevant information only when necessary, reducing clutter and improving the overall user experience..

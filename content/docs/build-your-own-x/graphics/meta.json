@@ -1,0 +1,8 @@
+{
+  "title": "Graphics",
+  "pages": [
+    "interpolation",
+    "minimumboundingbox",
+    "pointinpolygon"
+  ]
+} 

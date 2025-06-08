@@ -1,0 +1,12 @@
+{
+  "title": "Build Your Own X",
+  "defaultOpen": true,
+  "pages": [
+    "backend",
+    "cloud-architectural-patterns",
+    "frontend",
+    "general",
+    "graphics",
+    "networking"
+  ]
+} 

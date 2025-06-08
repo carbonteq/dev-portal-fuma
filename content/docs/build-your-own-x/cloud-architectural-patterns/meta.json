@@ -1,0 +1,9 @@
+{
+  "title": "Cloud Architectural Patterns",
+  "defaultOpen": true,
+  "pages": [
+    "circuitbreaker",
+    "priorityqueue",
+    "ratelimiter"
+  ]
+} 

@@ -1,0 +1,12 @@
+{
+  "title": "Best Practices",
+  "defaultOpen": true,
+  "pages": [
+    "overview",
+    "solid",
+    "javascript",
+    "backend",
+    "frontend",
+    "proposals"
+  ]
+} 

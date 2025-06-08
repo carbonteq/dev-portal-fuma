@@ -1,0 +1,83 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    {
+      "name": "@theme",
+      "description": "Tailwind CSS v4 theme configuration directive for defining custom CSS variables and theme values."
+    },
+    {
+      "name": "@variant",
+      "description": "Tailwind CSS v4 variant directive for creating custom responsive and state variants."
+    },
+    {
+      "name": "@utility",
+      "description": "Tailwind CSS v4 utility directive for defining custom utility classes."
+    },
+    {
+      "name": "@plugin",
+      "description": "Tailwind CSS v4 plugin directive for loading external plugins."
+    },
+    {
+      "name": "@source",
+      "description": "Tailwind CSS v4 source directive for specifying content sources."
+    }
+  ],
+  "properties": [
+    {
+      "name": "--color-fd-background",
+      "description": "FumaDocs background color variable"
+    },
+    {
+      "name": "--color-fd-foreground", 
+      "description": "FumaDocs foreground text color variable"
+    },
+    {
+      "name": "--color-fd-muted",
+      "description": "FumaDocs muted background color variable"
+    },
+    {
+      "name": "--color-fd-muted-foreground",
+      "description": "FumaDocs muted text color variable"
+    },
+    {
+      "name": "--color-fd-primary",
+      "description": "FumaDocs primary color variable"
+    },
+    {
+      "name": "--color-fd-primary-foreground",
+      "description": "FumaDocs primary foreground color variable"
+    },
+    {
+      "name": "--color-fd-secondary",
+      "description": "FumaDocs secondary color variable"
+    },
+    {
+      "name": "--color-fd-secondary-foreground",
+      "description": "FumaDocs secondary foreground color variable"
+    },
+    {
+      "name": "--color-fd-accent",
+      "description": "FumaDocs accent color variable"
+    },
+    {
+      "name": "--color-fd-accent-foreground",
+      "description": "FumaDocs accent foreground color variable"
+    },
+    {
+      "name": "--color-fd-border",
+      "description": "FumaDocs border color variable"
+    },
+    {
+      "name": "--color-fd-ring",
+      "description": "FumaDocs ring/focus color variable"
+    },
+    {
+      "name": "--font-vactory",
+      "description": "VactorySans custom font family variable"
+    },
+    {
+      "name": "--font-kghappy",
+      "description": "kgHappyFont custom font family variable"
+    }
+  ]
+} 

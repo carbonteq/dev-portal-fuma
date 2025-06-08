@@ -1,0 +1,8 @@
+{
+  "title": "Quality Assurance",
+  "defaultOpen": true,
+  "pages": [
+    "qa-automation",
+    "qa-web"
+  ]
+} 

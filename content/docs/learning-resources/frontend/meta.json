@@ -1,0 +1,9 @@
+{
+  "title": "Frontend",
+  "defaultOpen": true,
+  "pages": [
+    "beginner",
+    "advanced",
+    "utilities"
+  ]
+} 

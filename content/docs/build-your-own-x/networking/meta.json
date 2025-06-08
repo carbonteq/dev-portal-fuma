@@ -1,0 +1,11 @@
+{
+  "title": "Networking",
+  "defaultOpen": true,
+  "pages": [
+    "dns_client",
+    "networkscanner",
+    "peertopeercommunications",
+    "tcp_tunnel",
+    "websockets"
+  ]
+} 

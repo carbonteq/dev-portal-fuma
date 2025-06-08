@@ -1,0 +1,9 @@
+{
+  "title": "Backend - TypeScript",
+  "defaultOpen": true,
+  "pages": [
+    "headless-doc-management",
+    "cqrs-booking",
+    "todo"
+  ]
+} 
