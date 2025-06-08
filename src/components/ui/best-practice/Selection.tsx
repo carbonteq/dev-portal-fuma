@@ -1,13 +1,14 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useId } from 'react';
 
 // Custom Selection Context for Best Practice
-export type PracticeType = 'good' | 'bad';
+export type PracticeType = 'do' | 'dont';
 
 interface SelectionContextType {
   selected: PracticeType;
   setSelected: (type: PracticeType) => void;
+  layoutId: string;
 }
 
 const SelectionContext = createContext<SelectionContextType | undefined>(undefined);
@@ -18,11 +19,16 @@ interface SelectionProviderProps {
   defaultSelected?: PracticeType;
 }
 
-export function SelectionProvider({ children, defaultSelected = 'bad' }: SelectionProviderProps) {
+export function SelectionProvider({ children, defaultSelected = 'dont' }: SelectionProviderProps) {
   const [selected, setSelected] = useState<PracticeType>(defaultSelected);
+  const layoutId = useId();
   
   return (
-    <SelectionContext.Provider value={{ selected, setSelected }}>
+    <SelectionContext.Provider value={{ 
+      selected, 
+      setSelected, 
+      layoutId: `activeBackground-${layoutId}`
+    }}>
       {children}
     </SelectionContext.Provider>
   );

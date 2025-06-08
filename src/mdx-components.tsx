@@ -17,8 +17,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Col,
     Card,
     Aside,
+    ...components,
     Code,
     BestPractice,
-    ...components,
   };
 }
