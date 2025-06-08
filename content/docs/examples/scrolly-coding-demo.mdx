@@ -1,0 +1,181 @@
+---
+title: Scrolly Coding Demo
+description: Interactive code demonstration with animated transitions
+---
+
+import { ScrollyCoding } from "@/components/ui/ScrollyCoding"
+
+# Architecture Patterns Demo
+
+This demonstrates our scrolly coding component with animated transitions between different architectural concepts.
+
+<ScrollyCoding>
+
+## !!steps Domain Layer
+
+The domain layer contains the core business logic and rules. It's the innermost layer that should be independent of external concerns.
+
+```typescript !
+// domain/entities/User.ts
+export class User {
+  private constructor(
+    private readonly id: UserId,
+    private email: Email,
+    private name: string
+  ) {}
+
+  static create(email: string, name: string): User {
+    return new User(
+      UserId.generate(),
+      Email.create(email),
+      name
+    );
+  }
+
+  changeEmail(newEmail: string): void {
+    this.email = Email.create(newEmail);
+  }
+}
+```
+
+## !!steps Application Layer
+
+The application layer orchestrates the use cases and coordinates between the domain and infrastructure layers.
+
+```typescript ! 
+// application/services/UserService.ts
+export class UserService {
+  constructor(
+    private userRepository: UserRepository,
+    private emailService: EmailService
+  ) {}
+
+  async createUser(request: CreateUserRequest): Promise<UserResponse> {
+    const user = User.create(request.email, request.name);
+    
+    await this.userRepository.save(user);
+    await this.emailService.sendWelcomeEmail(user.email);
+    
+    return UserResponse.from(user);
+  }
+
+  async changeUserEmail(userId: string, newEmail: string): Promise<void> {
+    const user = await this.userRepository.findById(new UserId(userId));
+    user.changeEmail(newEmail);
+    await this.userRepository.save(user);
+  }
+}
+```
+
+## !!steps Infrastructure Layer
+
+The infrastructure layer provides concrete implementations of the interfaces defined in the domain layer.
+
+```typescript !
+// infrastructure/repositories/DatabaseUserRepository.ts
+export class DatabaseUserRepository implements UserRepository {
+  constructor(private db: Database) {}
+
+  async save(user: User): Promise<void> {
+    await this.db.users.upsert({
+      where: { id: user.id.value },
+      update: {
+        email: user.email.value,
+        name: user.name,
+        updatedAt: new Date()
+      },
+      create: {
+        id: user.id.value,
+        email: user.email.value,
+        name: user.name,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    });
+  }
+
+  async findById(id: UserId): Promise<User | null> {
+    const userData = await this.db.users.findUnique({
+      where: { id: id.value }
+    });
+    
+    return userData ? User.fromPersistence(userData) : null;
+  }
+}
+```
+
+## !!steps Presentation Layer
+
+The presentation layer handles HTTP requests and responses, converting between external formats and internal DTOs.
+
+```typescript !
+// web/controllers/UserController.ts
+export class UserController {
+  constructor(private userService: UserService) {}
+
+  async createUser(req: Request, res: Response): Promise<void> {
+    try {
+      const request = CreateUserRequest.from(req.body);
+      const user = await this.userService.createUser(request);
+      
+      res.status(201).json({
+        success: true,
+        data: user
+      });
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        res.status(400).json({
+          success: false,
+          error: error.message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error'
+        });
+      }
+    }
+  }
+}
+```
+
+## !!steps Dependency Injection
+
+Clean architecture relies on dependency inversion to maintain the proper direction of dependencies.
+
+```typescript !
+// di/container.ts
+export class Container {
+  private services = new Map<string, any>();
+
+  register(): void {
+    // Infrastructure
+    this.services.set('database', new Database());
+    this.services.set('userRepository', 
+      new DatabaseUserRepository(this.get('database'))
+    );
+    this.services.set('emailService', new EmailService());
+
+    // Application
+    this.services.set('userService', 
+      new UserService(
+        this.get('userRepository'),
+        this.get('emailService')
+      )
+    );
+
+    // Presentation
+    this.services.set('userController', 
+      new UserController(this.get('userService'))
+    );
+  }
+
+  get<T>(key: string): T {
+    return this.services.get(key);
+  }
+}
+```
+
+</ScrollyCoding>
+
+The component automatically cycles through each step every 4 seconds, but users can also click on any step to jump to it immediately. The design is minimal with black selection backgrounds as requested. 

@@ -4,7 +4,7 @@ import { SelectionProvider } from './Selection';
 import { Selectable } from './Selectable';
 import { Header } from './Header';
 import { CodeDisplay } from './CodeDisplay';
-import { Code } from './Code';
+import { Code } from '../animated-code/Code';
 
 // Simplified schema to avoid deep type instantiation
 const BestPracticeSchema = Block.extend({
