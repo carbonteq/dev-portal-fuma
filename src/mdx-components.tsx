@@ -5,6 +5,8 @@ import Row from '@/components/ui/Row';
 import Col from '@/components/ui/Col';
 import Card from '@/components/ui/Card';
 import Aside from '@/components/ui/Aside';
+import { Code } from '@/components/ui/Code';
+import { BestPractice } from '@/components/ui/BestPractice';
 
 // use this function to get MDX components, you will need it for rendering MDX
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
@@ -15,6 +17,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Col,
     Card,
     Aside,
+    Code,
+    BestPractice,
     ...components,
   };
 }

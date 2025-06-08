@@ -776,3 +776,59 @@ const [data1, data2, data3] = await Promise.all([
 - [MDN - Async Programming (specific sections below)](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Asynchronous)
 - [MDN - Using Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises)
 - [MDN - Introducing Async JS](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Asynchronous/Introducing)
+
+## Best Practice Example
+
+<BestPractice>
+
+!!practices Good vs Bad API Patterns
+
+!example[Good: Clear Error Handling]
+```ts
+async function fetchUserData(userId: string) {
+  try {
+    const response = await fetch(`/api/users/${userId}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch user data:', error);
+    throw error;
+  }
+}
+```
+
+!example[Bad: Silent Failures]
+```ts
+async function fetchUserData(userId: string) {
+  const response = await fetch(`/api/users/${userId}`);
+  return await response.json();
+}
+```
+
+!!practices Function Naming
+
+!example[Good: Descriptive Names]
+```ts
+function calculateTotalPriceWithTax(price: number, taxRate: number): number {
+  return price * (1 + taxRate);
+}
+
+function isUserEligibleForDiscount(user: User): boolean {
+  return user.accountAge > 365 && user.totalPurchases > 1000;
+}
+```
+
+!example[Bad: Vague Names]
+```ts
+function calc(p: number, t: number): number {
+  return p * (1 + t);
+}
+
+function check(u: User): boolean {
+  return u.age > 365 && u.purchases > 1000;
+}
+```
+
+</BestPractice>
