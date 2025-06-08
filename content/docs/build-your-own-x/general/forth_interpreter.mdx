@@ -21,9 +21,9 @@ You'll also have to add support for defining new words using this syntax `: word
 
 The only data type we will be using in our programs are 16-bit signed integers. We'll also support only lowercase letters in our word definitions.
 
-:::note
+<Aside type="note">
 This is not a truly formal definition of our subset of the language.
-:::
+</Aside>
 
 ```js
 (* A program is comprised of multiple statements *)
@@ -91,9 +91,9 @@ white space = ? white space characters ? ;
 
 Your program should be usable as a library, and as a CLI/TUI/Web UI/GUI based program. The program will accept a sequence/list of word definitions and invocations, and should then print the final stack to the output area of whatever UI you choose. In case of any syntax errors, the user should be provided as much information as possible to resolve that error.
 
-:::tip
+<Aside type="tip">
 Make it work, then make it simpler, and then faster.
-:::
+</Aside>
 
 Follow the Single Responsibility principle, and write an extensive suite of unit tests for each of the programs' units, and then integration tests using the example programs above.
 

@@ -90,7 +90,8 @@ contains of attributes. DTOs are anemic in general and do not contain any busine
 - DTOs should be data-oriented, not object-oriented. Its properties should be mostly primitives. We are not modeling anything here, just sending flat data around.
 - If DTO decorators for validation/documentation are not used, DTO can be just an interface instead of class + interface.
 
-:::tip
+<Aside type="tip">
+
 **Validation At Runtime**
 
 Data should not be trusted. There are a lot of cases when invalid data may end up in a domain. For example, if data
@@ -99,7 +100,8 @@ comes from external API, database, or if it's just a programmer error.
 Things that can't be validated at compile time (like user input) are validated at runtime.
 
 First line of defense is validation of user input DTOs. `Request/Response` DTO classes may be a good place to use validation and sanitization decorators like [class-validator](https://www.npmjs.com/package/class-validator) and [class-sanitizer](https://www.npmjs.com/package/class-sanitizer) (make sure that all validation errors are gathered first and only then return them to the user, this is called Notification pattern. Class-validator does this by default).
-:::
+
+</Aside>
 
 ### Aggregate
 
@@ -107,7 +109,7 @@ An aggregate is a set of domain objects, usually called Entities and Value Objec
 inside our bounded context. One of the entities that make up the Aggregate is called the Aggregate Root or Root Entity.
 This entity owns all the others inside the aggregate. Other objects interact with the objects within the aggregate via
 the aggregate root, and never directly. A set of consistency rules ([invariants](#invariants)) applies within the
-Aggregate’s boundaries.
+Aggregate's boundaries.
 
 ### Domain Events
 
@@ -138,7 +140,7 @@ To handle integration events in microservices you may need an external message b
 together with patterns like Transactional outbox, Change Data Capture, Sagas or a Process Manager to maintain eventual
 consistency.
 
-:::note
+<Aside type="note">
 **Domain events versus integration events**
 
 Semantically, domain and integration events are the same thing: notifications about something that just happened. However, their implementation must be different. Domain events are just messages pushed to a domain event dispatcher, which could be implemented as an in-memory mediator based on an IoC container or any other method.
@@ -148,7 +150,7 @@ On the other hand, the purpose of integration events is to propagate committed t
 Read More:
 
 - [Domain Events vs. Integration Events in Domain-Driven Design and microservices architectures](https://devblogs.microsoft.com/cesardelatorre/domain-events-vs-integration-events-in-domain-driven-design-and-microservices-architectures/)
-  :::
+</Aside>
 
 ### Domain Service
 
@@ -163,8 +165,8 @@ Read More:
 ### Entity
 
 - Entity encapsulate most of the domain business logic, avoid putting business logic in services
-- Domain objects characterized by having an identity that’s not tied to their attribute values. All attributes in an
-  entity can change, and it’s still the same entity. Conversely, two entities might be equivalent in all their
+- Domain objects characterized by having an identity that's not tied to their attribute values. All attributes in an
+  entity can change, and it's still the same entity. Conversely, two entities might be equivalent in all their
   attributes, but will still be distinct.
 - Complex entities usually contains other value objects
 - API should be created to accommodate business logic not database schema, as a result id is generated within code not
@@ -193,11 +195,10 @@ measure an Entity." - Vaughn Vernon
 
 - Can be used as an attribute of entities and other value objects.
 - Explicitly defines and enforces important constraints (invariants).
-- It isn’t just a data structure that holds values. It can also encapsulate logic associated with the concept it
+- It isn't just a data structure that holds values. It can also encapsulate logic associated with the concept it
   represents.
 
-:::tip
-
+<Aside type="tip">
 **Try to replace primitives with value objects**
 
 Significant business concepts can be expressed using specific types and classes. Value Objects can be used instead
@@ -215,7 +216,7 @@ email: Email;
 
 Now the only way to make an email is to create a new instance of Email class first, this ensures it will be validated on
 creation and a wrong value won't get into Entities.
-:::
+</Aside>
 
 ### Domain Invariants
 
@@ -248,16 +249,15 @@ So, why are we validating things twice? Let's call a second validation "guarding
 
 Guarding is a failsafe mechanism. Domain layer views it as invariants to comply with always-valid domain model.
 Validation is a filtration mechanism. Outside layers view them as input validation rules.
-This difference leads to different treatment of violations of these business rules. An invariant violation in the domain model is an exceptional situation and should be met with throwing an exception. On the other hand, there’s nothing exceptional in external input being incorrect.
+This difference leads to different treatment of violations of these business rules. An invariant violation in the domain model is an exceptional situation and should be met with throwing an exception. On the other hand, there's nothing exceptional in external input being incorrect.
 
-The input coming from the outside world should be filtered out before passing it further to the domain model. It’s the first line of defense against data inconsistency. At this stage, any incorrect data is denied with corresponding error messages. Once the filtration has confirmed that the incoming data is valid it is passed to a domain. When the data enters the always-valid domain boundary, it is assumed to be valid and any violation of this assumption means that you’ve introduced a bug. Guards help to reveal those bugs. They are the failsafe mechanism, the last line of defense that ensures data in the always-valid boundary is indeed valid. Unlike validations, guards throw exceptions; they comply with the Fail Fast principle.
+The input coming from the outside world should be filtered out before passing it further to the domain model. It's the first line of defense against data inconsistency. At this stage, any incorrect data is denied with corresponding error messages. Once the filtration has confirmed that the incoming data is valid it is passed to a domain. When the data enters the always-valid domain boundary, it is assumed to be valid and any violation of this assumption means that you've introduced a bug. Guards help to reveal those bugs. They are the failsafe mechanism, the last line of defense that ensures data in the always-valid boundary is indeed valid. Unlike validations, guards throw exceptions; they comply with the Fail Fast principle.
 
 Domain classes should always guard themselves against becoming invalid.
 
 For preventing null/undefined values, empty objects and arrays, incorrect input length etc. a library of guards can be created.
 
-:::info
-
+<Aside type="info">
 **Coming Soon**
 
 - Domain Errors
@@ -265,4 +265,4 @@ For preventing null/undefined values, empty objects and arrays, incorrect input 
 - Validation at compile time
 - Using Libraries inside application core
 - Custom utility types
-  :::
+</Aside>

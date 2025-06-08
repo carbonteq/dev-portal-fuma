@@ -1,0 +1,555 @@
+---
+title: JavaScript/TypeScript
+---
+
+## Variable Declarations
+
+<BestPractice title="Variable Declaration Strategies">
+
+Modern JavaScript provides better alternatives to `var` that prevent common bugs and make code more predictable.
+
+## !dont var-problems
+
+**Use `var` for variable declarations.** It allows redeclaration and has function scope, leading to:
+- Unexpected variable hoisting
+- Accidental redeclarations  
+- Hard-to-debug scope issues
+
+```js !example
+var userName = "john";
+var userName = "jane"; // Redeclaration allowed!
+
+if (true) {
+  var userName = "bob"; // Same variable!
+}
+console.log(userName); // "bob" - unexpected!
+```
+
+## !do const-benefits
+
+**Use `const` for variable declarations when possible.** It provides:
+- **Block scope** instead of function scope
+- **No redeclaration** allowed
+- Clear intent about variable immutability
+
+```js !example
+const userName = "john";
+// const userName = "jane"; // SyntaxError!
+
+if (true) {
+  const userName = "bob"; // Different variable, block scoped
+}
+console.log(userName); // "john" - as expected
+```
+
+</BestPractice>
+
+## Function Definitions
+
+<BestPractice title="Arrow Functions vs Regular Functions">
+
+Arrow functions provide cleaner syntax and predictable behavior, especially for simple operations and callbacks.
+
+## !dont function-syntax
+
+**Use verbose function declarations for simple operations.** This creates unnecessary complexity:
+- More verbose syntax
+- Potential `this` binding issues
+- Less readable in callbacks
+
+```js !example
+const numbers = [1, 2, 3, 4, 5];
+
+const doubled = numbers.map(function(num) {
+  return num * 2;
+});
+
+function processUser(user) {
+  return user.name.toUpperCase();
+}
+```
+
+## !do arrow-functions
+
+**Use arrow functions for concise operations.** They provide:
+- **Cleaner syntax** for simple functions
+- **Predictable behavior** without `this` binding issues
+- **Better readability** in functional programming
+
+```js !example
+const numbers = [1, 2, 3, 4, 5];
+
+const doubled = numbers.map(num => num * 2);
+
+const processUser = user => user.name.toUpperCase();
+
+// Multiple parameters and complex logic
+const calculateTotal = (price, tax) => {
+  const total = price + (price * tax);
+  return Math.round(total * 100) / 100;
+};
+```
+
+</BestPractice>
+
+## Asynchronous Programming
+
+<BestPractice title="Modern Async Patterns">
+
+Modern JavaScript offers cleaner alternatives to callback-based asynchronous programming.
+
+## !dont callback-hell
+
+**Use nested callbacks for async operations.** This creates:
+- Deeply nested code (callback hell)
+- Poor error handling
+- Difficult debugging and maintenance
+
+```js !example
+const getUserData = (userId, callback) => {
+  getUserFromDb(userId, (user) => {
+    fetchUserProfiles(user, (profiles) => {
+      processProfiles(profiles, (result) => {
+        callback(result);
+      });
+    });
+  });
+};
+```
+
+## !do async-await
+
+**Use async/await for cleaner async code.** It provides:
+- **Linear code flow** that's easy to read
+- **Better error handling** with try/catch
+- **Simplified debugging** with proper stack traces
+
+```js !example
+const getUserData = async (userId) => {
+  try {
+    const user = await getUserFromDb(userId);
+    const profiles = await fetchUserProfiles(user);
+    const result = await processProfiles(profiles);
+    return result;
+  } catch (error) {
+    console.error('Failed to get user data:', error);
+    throw error;
+  }
+};
+```
+
+</BestPractice>
+
+## String Handling
+
+<BestPractice title="Template Literals vs Concatenation">
+
+Template literals provide better readability and performance for string formatting.
+
+## !dont string-concat
+
+**Use string concatenation for formatting.** This leads to:
+- Poor readability with complex strings
+- Error-prone quote escaping
+- Performance overhead
+
+```js !example
+const dbUser = "admin";
+const dbPass = "secret123";
+const dbHost = "localhost";
+const dbPort = 5432;
+
+const dbURI = "postgresql://" + dbUser + ":" + 
+  dbPass + "@" + dbHost + ":" + dbPort + "/mydb";
+
+const message = "Hello " + user.name + "!\n" +
+  "You have " + user.notifications + " new messages.";
+```
+
+## !do template-literals
+
+**Use template literals for string formatting.** They provide:
+- **Clean syntax** with embedded expressions
+- **Multi-line support** without escape characters
+- **Better performance** and readability
+
+```js !example
+const dbUser = "admin";
+const dbPass = "secret123";
+const dbHost = "localhost";
+const dbPort = 5432;
+
+const dbURI = `postgresql://${dbUser}:${dbPass}@${dbHost}:${dbPort}/mydb`;
+
+const message = `Hello ${user.name}!
+You have ${user.notifications} new messages.`;
+```
+
+</BestPractice>
+
+## Default Values
+
+<BestPractice title="Function Parameter Defaults">
+
+Default parameters make function behavior explicit and eliminate manual fallback logic.
+
+## !dont manual-defaults
+
+**Use manual fallback logic for default values.** This approach:
+- Obscures function intent
+- Fails with falsy values like `0` or `""`
+- Adds unnecessary complexity
+
+```js !example
+const createUser = (name, role, isActive) => {
+  const userName = name || "Anonymous";
+  const userRole = role || "user";
+  const active = isActive !== undefined ? isActive : true;
+  
+  return { userName, userRole, active };
+};
+
+// Problems with falsy values
+createUser("", "admin", false); // Name becomes "Anonymous"!
+```
+
+## !do default-parameters
+
+**Use default parameters in function signature.** They provide:
+- **Clear intent** about default behavior
+- **Proper handling** of `undefined` values
+- **Cleaner function body** without fallback logic
+
+```js !example
+const createUser = (
+  name = "Anonymous",
+  role = "user", 
+  isActive = true
+) => {
+  return { name, role, isActive };
+};
+
+// Works correctly with all values
+createUser("", "admin", false); // Preserves empty string
+createUser(undefined, "admin"); // Uses default name
+```
+
+</BestPractice>
+
+## Null Handling
+
+<BestPractice title="Nullish Coalescing">
+
+Nullish coalescing provides precise null/undefined handling without affecting other falsy values.
+
+## !dont logical-or
+
+**Use logical OR (`||`) for null checks.** This incorrectly treats falsy values:
+- `0`, `""`, `false` are treated as null
+- Unexpected behavior with valid falsy data
+- Imprecise null handling
+
+```js !example
+const displayCount = (count) => {
+  return count || "No items";
+};
+
+displayCount(0);      // "No items" - Wrong!
+displayCount("");     // "No items" - Wrong!
+displayCount(false);  // "No items" - Wrong!
+displayCount(null);   // "No items" - Correct
+```
+
+## !do nullish-coalescing
+
+**Use nullish coalescing operator (`??`).** It provides:
+- **Precise null/undefined checking** only
+- **Preserves falsy values** like `0`, `""`, `false`
+- **Clear intent** about null handling
+
+```js !example
+const displayCount = (count) => {
+  return count ?? "No items";
+};
+
+displayCount(0);         // 0 - Correct!
+displayCount("");        // "" - Correct!  
+displayCount(false);     // false - Correct!
+displayCount(null);      // "No items" - Correct!
+displayCount(undefined); // "No items" - Correct!
+```
+
+</BestPractice>
+
+## Object Access
+
+<BestPractice title="Optional Chaining">
+
+Optional chaining prevents errors when accessing nested properties that might not exist.
+
+## !dont manual-checks
+
+**Use manual null checks for nested properties.** This creates:
+- Verbose and repetitive code
+- Error-prone validation chains
+- Poor readability
+
+```js !example
+const getProfileEmail = (user) => {
+  if (user && user.profile && user.profile.contact && user.profile.contact.email) {
+    return user.profile.contact.email;
+  }
+  return null;
+};
+
+// Multiple variables needed for complex access
+const street = user && user.address && user.address.street;
+const zipCode = user && user.address && user.address.zipCode;
+```
+
+## !do optional-chaining
+
+**Use optional chaining (`?.`) for safe property access.** It provides:
+- **Concise syntax** for nested property access
+- **Automatic null/undefined handling**
+- **Better readability** and maintainability
+
+```js !example
+const getProfileEmail = (user) => {
+  return user?.profile?.contact?.email ?? null;
+};
+
+// Clean and readable property access
+const street = user?.address?.street;
+const zipCode = user?.address?.zipCode;
+
+// Works with methods and array access too
+const firstFriend = user?.friends?.[0]?.name;
+const result = api?.getData?.();
+```
+
+</BestPractice>
+
+## Array Iteration
+
+<BestPractice title="Modern Loop Patterns">
+
+Modern JavaScript provides cleaner alternatives to traditional for loops for common iteration patterns.
+
+## !dont traditional-loops
+
+**Use traditional for loops for simple iteration.** This approach:
+- Requires manual index management
+- More verbose for simple operations
+- Higher chance of off-by-one errors
+
+```js !example
+const numbers = [1, 2, 3, 4, 5];
+const names = ["Alice", "Bob", "Charlie"];
+
+// Traditional for loop
+for (let i = 0; i < numbers.length; i++) {
+  console.log(numbers[i]);
+}
+
+// Manual forEach implementation
+for (let i = 0; i < names.length; i++) {
+  const name = names[i];
+  console.log(`Hello, ${name}!`);
+}
+```
+
+## !do modern-iteration
+
+**Use `for...of` loops and array methods.** They provide:
+- **Cleaner syntax** without index management
+- **Direct access** to values
+- **Functional programming** patterns
+
+```js !example
+const numbers = [1, 2, 3, 4, 5];
+const names = ["Alice", "Bob", "Charlie"];
+
+// Clean for...of loop
+for (const number of numbers) {
+  console.log(number);
+}
+
+// Functional approach with map
+const greetings = names.map(name => `Hello, ${name}!`);
+greetings.forEach(greeting => console.log(greeting));
+
+// Or combined
+names.forEach(name => console.log(`Hello, ${name}!`));
+```
+
+</BestPractice>
+
+## Object Manipulation
+
+<BestPractice title="Destructuring Assignment">
+
+Destructuring provides clean syntax for extracting values from objects and arrays.
+
+## !dont property-access
+
+**Use repetitive property access.** This leads to:
+- Verbose variable assignments
+- Repeated object references
+- Less readable function parameters
+
+```js !example
+const processUser = (userObj) => {
+  const id = userObj.id;
+  const name = userObj.name;
+  const email = userObj.profile.email;
+  const phone = userObj.profile.phone;
+  
+  return `${name} (${id}): ${email}, ${phone}`;
+};
+
+// Function with many parameters
+const createAccount = (email, username, firstName, lastName, age) => {
+  // Must remember parameter order
+  return { email, username, firstName, lastName, age };
+};
+```
+
+## !do destructuring
+
+**Use destructuring assignment.** It provides:
+- **Clean variable extraction** from objects
+- **Flexible function parameters** with objects
+- **Nested destructuring** for complex data
+
+```js !example
+const processUser = (userObj) => {
+  const { 
+    id, 
+    name, 
+    profile: { email, phone } 
+  } = userObj;
+  
+  return `${name} (${id}): ${email}, ${phone}`;
+};
+
+// Object parameters with destructuring
+const createAccount = ({ email, username, firstName, lastName, age }) => {
+  return { email, username, firstName, lastName, age };
+};
+
+// Flexible calling with any order
+createAccount({ 
+  firstName: "John", 
+  email: "john@example.com", 
+  age: 25,
+  username: "johndoe",
+  lastName: "Doe" 
+});
+```
+
+</BestPractice>
+
+## Concurrent Operations
+
+<BestPractice title="Promise Concurrency">
+
+Run independent async operations concurrently to improve performance.
+
+## !dont sequential-await
+
+**Await promises sequentially when they're independent.** This causes:
+- Unnecessary waiting time  
+- Poor performance with multiple API calls
+- Blocking execution
+
+```js !example
+const fetchUserData = async (userId) => {
+  const profile = await fetchProfile(userId);     // 2s
+  const preferences = await fetchPreferences(userId); // 1.5s  
+  const notifications = await fetchNotifications(userId); // 3s
+  
+  return { profile, preferences, notifications };
+  // Total time: 6.5 seconds
+};
+```
+
+## !do promise-all
+
+**Use `Promise.all()` for concurrent operations.** It provides:
+- **Parallel execution** of independent operations
+- **Significant performance improvement**
+- **Clean syntax** with destructuring
+
+```js !example
+const fetchUserData = async (userId) => {
+  const [profile, preferences, notifications] = await Promise.all([
+    fetchProfile(userId),        // 2s
+    fetchPreferences(userId),    // 1.5s  
+    fetchNotifications(userId)   // 3s
+  ]);
+  
+  return { profile, preferences, notifications };
+  // Total time: 3 seconds (max of all requests)
+};
+```
+
+</BestPractice>
+
+## Data Structures
+
+<BestPractice title="Efficient Data Lookup">
+
+Use appropriate data structures for fast lookups and uniqueness constraints.
+
+## !dont array-includes
+
+**Use arrays for membership testing and lookups.** This results in:
+- O(n) time complexity for searches
+- Performance issues with large datasets
+- Inefficient duplicate checking
+
+```js !example
+const allowedMethods = ["GET", "POST", "PUT", "DELETE"];
+const processedIds = [];
+
+const isAllowedMethod = (method) => {
+  return allowedMethods.includes(method); // O(n) search
+};
+
+const isProcessed = (id) => {
+  return processedIds.includes(id); // O(n) search
+};
+
+const markAsProcessed = (id) => {
+  if (!processedIds.includes(id)) {
+    processedIds.push(id);
+  }
+};
+```
+
+## !do set-map
+
+**Use `Set` and `Map` for fast lookups.** They provide:
+- **O(1) average time complexity** for lookups
+- **Built-in uniqueness** with Set
+- **Better performance** with large datasets
+
+```js !example
+const allowedMethods = new Set(["GET", "POST", "PUT", "DELETE"]);
+const processedIds = new Set();
+
+const isAllowedMethod = (method) => {
+  return allowedMethods.has(method); // O(1) lookup
+};
+
+const isProcessed = (id) => {
+  return processedIds.has(id); // O(1) lookup
+};
+
+const markAsProcessed = (id) => {
+  processedIds.add(id); // Automatically handles duplicates
+};
+```
+
+</BestPractice>

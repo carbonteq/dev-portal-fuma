@@ -1,5 +1,6 @@
 ---
-title: Overview
+title: Best Practices Overview  
+description: A comprehensive guide to general software development principles and best practices.
 ---
 
 This section goes over a set of techniques, principles and standards which can make your code simple, readable,
@@ -39,7 +40,7 @@ Abstraction – Computer Science
 gives a clear definition of what an abstraction is
 
 > Abstraction is the ability to view a complex operation in a simplified form. A class interface provides an abstraction
-> of the implementation that’s hidden behind the interface
+> of the implementation that's hidden behind the interface
 
 Abstractions are used regularly in everyday language, we use abstraction when talking about lots of things, such as
 
@@ -48,13 +49,13 @@ Abstractions are used regularly in everyday language, we use abstraction when ta
 - Computer
 - Mobile Phone
 
-These are abstract ideas which everyone understands but people don’t have a mobile phone, they have an exact make of
-mobile phone but most people don’t talk about the exact type by the abstract type of mobile phone.
+These are abstract ideas which everyone understands but people don't have a mobile phone, they have an exact make of
+mobile phone but most people don't talk about the exact type by the abstract type of mobile phone.
 
 ### **Data Abstraction And Control Abstractions**
 
 While doing some research to write this article, I often saw people claiming that data abstraction was exclusive to OOP
-paradigm. Well, it’s wrong.
+paradigm. Well, it's wrong.
 
 **ADT as Data Abstractions**
 
@@ -77,16 +78,16 @@ create behaviors.
 
 In most programming language, functions will be your control abstraction of choice. Yes, even in OOP.
 
-Here’s why a function is an abstraction:
+Here's why a function is an abstraction:
 
-- The name of a function simplify and hide its internal mechanism. After all, when you call a function, you don’t really
+- The name of a function simplify and hide its internal mechanism. After all, when you call a function, you don't really
   care about its implementation. Its name, its inputs and outputs (the function signature) should give you the details
   you need to use it when necessary.
 - A function generalize a behavior: it can be reused anywhere, hopefully in a small defined scope.
 
 **Classes and Objects as Both**
 
-What happens then if you’re using your Objects? It doesn’t really matter if your internal properties change as long as
+What happens then if you're using your Objects? It doesn't really matter if your internal properties change as long as
 the methods still receive the same arguments and do the same thing as before. If something is wrong, you only need to
 change it once.
 
@@ -98,24 +99,22 @@ Every function and structures available as part of a programming language are ge
 can use everywhere, possibly in every application, even if they have nothing related to each other on the business
 level. You need to use a loop? You can use the construct for, which generalize the concept of loops.
 
-:::caution
-
+<Aside type="caution">
 It sounds obvious enough, but generalizing at the right level is really hard.
+</Aside>
 
-:::
-
-Your code is more related to the reality of the business you work for. If you’re programming an e-commerce platform,
-you’ll have to deal with products, orders, shipments, and customers, for example.
+Your code is more related to the reality of the business you work for. If you're programming an e-commerce platform,
+you'll have to deal with products, orders, shipments, and customers, for example.
 
 A company needs to adapt to its market and, therefore, possibly change very quickly its tactics and strategies. You need
 to understand the business well in order to translate its concepts in your code and make them scalable. When you need to
 generalize them, your understanding have to be even greater.
 
 Indeed, modifying generalizations can be dangerous. If your abstractions are used everywhere, you need to be sure that
-anything using them won’t break because of your changes. This is one of the biggest challenge in software engineering.
+anything using them won't break because of your changes. This is one of the biggest challenge in software engineering.
 
-That’s **why you should not generalize up front**. When you code something, a piece of behavior which might be used
-somewhere else in the future, so as you (or anybody else) think, don’t abstract it right away. Doing so would be only a
+That's **why you should not generalize up front**. When you code something, a piece of behavior which might be used
+somewhere else in the future, so as you (or anybody else) think, don't abstract it right away. Doing so would be only a
 wild assumption, a guess, and guessing is not what you should do.
 
 ---
@@ -525,7 +524,7 @@ Lets be honest communication is harder and inefficient. A simple litmus test for
 
 Coding guidelines vary across different contexts. Depending on your programming language or problem domain, there may be
 different coding guidelines for naming conventions, coding style, indentation, and file structures. Be mindful of your
-project’s individual needs and honor those coding standards when you can. It doesn't make sense to sacrifice speed for
+project's individual needs and honor those coding standards when you can. It doesn't make sense to sacrifice speed for
 the sake of readability in a real-time application where a millisecond latency incurs significant costs. The same is
 true the other way round. In most projects, adding a few (hundred) milliseconds of delay is worth it if it helps keep
 the project simple and improves the developer experience.
