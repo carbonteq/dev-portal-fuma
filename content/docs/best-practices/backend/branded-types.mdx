@@ -1,0 +1,410 @@
+---
+title: Branded Types Tutorial
+description: Learn why branded types matter and how to implement them properly in TypeScript
+---
+
+import { ScrollyCoding } from "@/components/ui/ScrollyCoding"
+
+# Building Type-Safe Applications with Branded Types
+
+This tutorial demonstrates the evolution from unsafe TypeScript patterns to robust branded types using `@carbonteq/refined-type`.
+
+<ScrollyCoding>
+
+## !!steps The Problem: Type Safety Illusion
+
+TypeScript uses structural typing, meaning types with the same structure are interchangeable. This can cause bugs when different concepts share the same underlying type.
+
+```typescript !
+type UserId = number;
+type ProductId = number;
+
+const getUserById = (id: UserId) => {
+  console.log(`Getting user ${id}`);
+};
+
+const getProductById = (id: ProductId) => {
+  console.log(`Getting product ${id}`);
+};
+
+const userId: UserId = 123;
+const productId: ProductId = 456;
+
+// !error[/productId/] This compiles but is logically wrong!
+getUserById(productId);
+// !error[/userId/] UserId used as ProductId - no compile error
+getProductById(userId);
+
+```
+
+## !!steps Approach 1: Interface Branding
+
+The first approach uses interfaces with unique symbols to create distinct types.
+
+```typescript !
+// Create branded types with interfaces
+// !mark(1:9) rgb(34, 197, 94)
+interface UserIdBrand {
+  readonly __brand: unique symbol;
+}
+type UserId = number & UserIdBrand;
+
+interface ProductIdBrand {
+  readonly __brand: unique symbol;
+}
+type ProductId = number & ProductIdBrand;
+
+// The `unique symbol` creates truly distinct types that TypeScript can't mix up
+
+// Helper functions to create branded values
+const createUserId = (n: number): UserId => n as UserId;
+const createProductId = (n: number): ProductId => n as ProductId;
+
+const userId = createUserId(123);
+const productId = createProductId(456);
+
+// !info[/getUserById/] Now these cause compile errors!
+getUserById(productId);
+
+// Problems with this approach:
+// !warning[/1/] No runtime validation
+const invalidUserId = createUserId(-1);
+// !warning[/999/] Easy to bypass with casting
+const bypassed: UserId = 999 as UserId; 
+```
+
+## !!steps Approach 2: Generic Brand Helper
+
+The second approach uses a generic Brand type to create opaque types more easily.
+
+```typescript !
+// !mark(1:5) rgb(34, 197, 94)
+type Brand<T, B> = T & { __brand: B };
+
+type UserId = Brand<number, "UserId">;
+type ProductId = Brand<number, "ProductId">;
+
+// Creation functions
+const asUserId = (n: number): UserId => n as UserId;
+const asProductId = (n: number): ProductId => n as ProductId;
+
+const userId = asUserId(123);
+const productId = asProductId(456);
+
+// Type safety works at compile time
+function processUser(id: UserId): void {
+  console.log(`Processing user ${id}`);
+}
+
+processUser(userId);
+
+// !info[/processUser\(productId\)/] This won't compile - good! Compile-time type safety prevents mixing IDs
+processUser(productId);
+
+// But still no runtime validation
+// !warning[/-1/] No runtime validation means invalid values slip through
+const invalidUserId = asUserId(-1);
+// !warning[/asUserId\(0\)/] Zero IDs are questionable but still compile
+const zeroUserId = asUserId(0);
+
+// Functions receive potentially invalid data
+processUser(invalidUserId);
+```
+
+## !!steps Approach 3: Class-based Wrappers
+
+The third approach uses classes to wrap values and provide validation, but has drawbacks.
+
+```typescript !
+// Class-based validation
+class UserId {
+  private __brand: undefined; // Prevent structural compatibility
+  
+  constructor(public readonly value: number) {
+    if (value <= 0) {
+      throw new Error(`Invalid user ID: ${value}`);
+    }
+  }
+}
+
+class ProductId {
+  private __brand: undefined;
+  
+  constructor(public readonly value: number) {
+    if (value <= 0) {
+      throw new Error(`Invalid product ID: ${value}`);
+    }
+  }
+}
+
+// Usage requires exception handling everywhere
+try {
+  const userId = new UserId(123);
+  const productId = new ProductId(456);
+  
+  // Must extract .value property
+  console.log(userId.value); // 123
+  
+  // Type safety works!
+  // new UserId(-1); // throws error
+  
+} catch (error) {
+  console.error("Validation failed:", error.message);
+}
+
+// Problems:
+// 1. Boxing/unboxing overhead
+// 2. Exception-based validation  
+// 3. Must access .value everywhere
+// 4. Try/catch blocks required
+```
+
+## !!steps The Solution: refined-type Library
+
+`@carbonteq/refined-type` combines the best of all approaches: compile-time type safety, runtime validation, and functional error handling.
+
+```typescript !
+import { createRefinedType } from "@carbonteq/refined-type";
+import { z } from "zod";
+
+// Create refined types with built-in validation
+const UserId = createRefinedType("UserId", z.number().positive());
+const ProductId = createRefinedType("ProductId", z.number().positive());
+
+// Infer the branded types
+type UserId = typeof UserId.$infer;
+type ProductId = typeof ProductId.$infer;
+
+// These won't compile - no direct assignment
+// const userId: UserId = 123; // ❌ Error
+// const productId: ProductId = 456; // ❌ Error
+
+// Must use .create() for validation
+const userIdResult = UserId.create(123);
+const productIdResult = ProductId.create(456);
+
+// All creation returns Result<T, Error> - no exceptions!
+console.log(userIdResult.isOk()); // true
+console.log(productIdResult.isOk()); // true
+
+// Invalid values return errors
+const invalidResult = UserId.create(-1);
+console.log(invalidResult.isOk()); // false
+
+// Type-safe functions only accept branded types
+function processUser(id: UserId): void {
+  console.log(`Processing user ${id}`);
+}
+```
+
+## !!steps Safe Creation and Error Handling
+
+The Result-based API eliminates exceptions and provides elegant error handling patterns.
+
+```typescript !
+import { Result } from "@carbonteq/fp";
+
+// Safe creation with validation
+const userIdResult = UserId.create(123);
+const invalidResult = UserId.create(-1);
+
+// Elegant error handling without try/catch
+if (userIdResult.isOk()) {
+  const validUserId = userIdResult.unwrap();
+  console.log(`Valid user ID: ${validUserId}`);
+} else {
+  const error = userIdResult.unwrapErr();
+  console.log(`Validation failed: ${error.message}`);
+}
+
+// Pattern matching style handling
+userIdResult.match({
+  Ok: (userId) => console.log(`Success: ${userId}`),
+  Err: (error) => console.log(`Error: ${error.message}`)
+});
+
+// Functional composition with Results
+function createIds(userNum: number, productNum: number): Result<{userId: UserId, productId: ProductId}, Error> {
+  const userResult = UserId.create(userNum);
+  const productResult = ProductId.create(productNum);
+  
+  // Combine multiple Results elegantly
+  return Result.CombineResults([userResult, productResult])
+    .map(([userId, productId]) => ({ userId, productId }));
+}
+
+// Usage
+const idsResult = createIds(123, 456);
+idsResult.match({
+  Ok: ({userId, productId}) => console.log("IDs created:", userId, productId),
+  Err: (error) => console.error("Creation failed:", error.message)
+});
+```
+
+## !!steps Custom Error Types and Domain Logic
+
+Create domain-specific error types for better error handling and business logic representation.
+
+```typescript !
+import { RefinedValidationError } from "@carbonteq/refined-type";
+
+// Custom error type for user IDs
+class InvalidUserIdError extends RefinedValidationError {
+  constructor(data: unknown, err: z.ZodError) {
+    super(err);
+    this.name = "InvalidUserIdError";
+    this.message = `Invalid user ID: ${data}. Must be positive.`;
+  }
+}
+
+// Create refined type with custom error handler
+const UserId = createRefinedType(
+  "UserId", 
+  z.number().positive(),
+  (data, err) => new InvalidUserIdError(data, err)
+);
+
+type UserId = typeof UserId.$infer;
+
+// Now we get domain-specific errors
+const validResult = UserId.create(123);
+const invalidResult = UserId.create(-1);
+
+validResult.match({
+  Ok: (userId) => console.log(`Valid: ${userId}`),
+  Err: (error) => console.log("Unexpected error")
+});
+
+invalidResult.match({
+  Ok: (userId) => console.log("Unexpected success"),
+  Err: (error) => {
+    if (error instanceof InvalidUserIdError) {
+      console.log("User ID error:", error.message);
+      // Handle user ID specific validation logic
+    }
+  }
+});
+```
+
+## !!steps Working with Primitive Values
+
+Access underlying primitive values when needed for calculations or external APIs.
+
+```typescript !
+import { type Unbrand } from "@carbonteq/refined-type";
+
+// Define refined numeric types
+const Price = createRefinedType("Price", z.number().positive());
+const Quantity = createRefinedType("Quantity", z.number().int().positive());
+
+type Price = typeof Price.$infer;
+type Quantity = typeof Quantity.$infer;
+
+// Get the underlying primitive type
+type UnbrandedPrice = Unbrand<Price>; // number
+
+// Business logic functions using branded types
+function calculateTotal(price: Price, quantity: Quantity): number {
+  // Extract primitive values for calculations
+  const priceValue = Price.primitive(price);
+  const quantityValue = Quantity.primitive(quantity);
+  
+  return priceValue * quantityValue;
+}
+
+// Safe creation and calculation
+const priceResult = Price.create(29.99);
+const quantityResult = Quantity.create(3);
+
+// Combine validations
+const calculationResult = Result.CombineResults([
+  priceResult, 
+  quantityResult
+]).map(([price, quantity]) => 
+  calculateTotal(price, quantity)
+);
+
+calculationResult.match({
+  Ok: (total) => console.log(`Total: $${total.toFixed(2)}`),
+  Err: (error) => console.log(`Calculation failed: ${error.message}`)
+});
+```
+
+## !!steps Complex Object Validation
+
+Compose refined types into complex data structures for comprehensive validation.
+
+```typescript !
+// Define multiple refined types
+const Name = createRefinedType("Name", z.string().min(2).max(50));
+const Age = createRefinedType("Age", z.number().int().min(0).max(120));
+
+type Name = typeof Name.$infer;
+type Age = typeof Age.$infer;
+
+// User object with refined types
+interface User {
+  id: UserId;
+  name: Name;
+  age: Age;
+}
+
+// Validation function for complete user objects
+function createUser(userData: {
+  id: unknown;
+  name: unknown;
+  age: unknown;
+}): Result<User, Error> {
+  
+  // Validate each field
+  const idResult = UserId.create(userData.id);
+  const nameResult = Name.create(userData.name);
+  const ageResult = Age.create(userData.age);
+  
+  // Combine all validations
+  return Result.CombineResults([
+    idResult,
+    nameResult,
+    ageResult
+  ]).map(([id, name, age]) => ({
+    id,
+    name,
+    age
+  }));
+}
+
+// Usage with error handling
+const userData = {
+  id: 123,
+  name: "John Doe",
+  age: 30
+};
+
+createUser(userData).match({
+  Ok: (user) => {
+    console.log("User created:", {
+      id: UserId.primitive(user.id),
+      name: Name.primitive(user.name),
+      age: Age.primitive(user.age)
+    });
+  },
+  Err: (error) => {
+    console.error("Validation failed:", error.message);
+  }
+});
+```
+
+</ScrollyCoding>
+
+## Key Benefits
+
+This tutorial demonstrates how `@carbonteq/refined-type` solves the fundamental problems with TypeScript's structural typing:
+
+- **🔒 Type Safety**: True nominal types prevent accidental mixing
+- **✅ Runtime Validation**: Zod integration ensures data integrity  
+- **🚫 No Exceptions**: Result-based API eliminates error-prone try/catch
+- **🎯 Domain Modeling**: Custom errors represent business logic
+- **⚡ Performance**: Zero overhead after validation
+- **🔧 Composable**: Chain and combine validations elegantly
+
+The progression from basic TypeScript pitfalls to robust branded types shows why proper validation and type safety are essential for production applications.

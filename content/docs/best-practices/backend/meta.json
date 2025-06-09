@@ -3,6 +3,7 @@
   "defaultOpen": true,
   "pages": [
     "best_practices",
+    "branded-types",
     "principles", 
     "architecture",
     "stack_tooling"
