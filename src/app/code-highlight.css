@@ -26,6 +26,20 @@
   --ch-24: #8c959f;
   --ch-25: #afb8c133;
   --ch-26: #ffffffe6;
+  
+  /* Callout variables */
+  --ch-callout-bg: hsl(220, 13%, 97%);
+  --ch-callout-border: hsl(220, 13%, 69%);
+  --ch-callout-text: hsl(220, 9%, 15%);
+  --ch-warning-bg: hsl(45, 100%, 92%);
+  --ch-warning-border: hsl(32, 100%, 45%);
+  --ch-warning-text: hsl(220, 9%, 15%);
+  --ch-error-bg: hsl(0, 100%, 95%);
+  --ch-error-border: hsl(350, 65%, 50%);
+  --ch-error-text: hsl(220, 9%, 15%);
+  --ch-info-bg: hsl(210, 100%, 92%);
+  --ch-info-border: hsl(210, 100%, 50%);
+  --ch-info-text: hsl(220, 9%, 15%);
 }
 
 .dark {
@@ -56,6 +70,20 @@
   --ch-24: #6e7681;
   --ch-25: #6e768166;
   --ch-26: #0d1117e6;
+  
+  /* Callout variables */
+  --ch-callout-bg: hsl(220, 13%, 12%);
+  --ch-callout-border: hsl(220, 13%, 25%);
+  --ch-callout-text: hsl(220, 14%, 83%);
+  --ch-warning-bg: hsl(45, 100%, 12%);
+  --ch-warning-border: hsl(32, 100%, 65%);
+  --ch-warning-text: hsl(220, 14%, 83%);
+  --ch-error-bg: hsl(0, 100%, 12%);
+  --ch-error-border: hsl(350, 100%, 72%);
+  --ch-error-text: hsl(220, 14%, 83%);
+  --ch-info-bg: hsl(210, 100%, 15%);
+  --ch-info-border: hsl(210, 100%, 70%);
+  --ch-info-text: hsl(220, 14%, 83%);
 }
 
 /* Ensure Code Hike Pre component uses background colors */
