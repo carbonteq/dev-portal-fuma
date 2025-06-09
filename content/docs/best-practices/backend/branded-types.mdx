@@ -30,9 +30,10 @@ const getProductById = (id: ProductId) => {
 const userId: UserId = 123;
 const productId: ProductId = 456;
 
-// !error[/productId/] This compiles but is logically wrong!
+// This compiles but is logically wrong!
+// !error[/getUserById\(productId\)/] Wrong ID type passed to function
 getUserById(productId);
-// !error[/userId/] UserId used as ProductId - no compile error
+// !error[/getProductById\(userId\)/] Different ID types are interchangeable
 getProductById(userId);
 
 ```
@@ -63,13 +64,13 @@ const createProductId = (n: number): ProductId => n as ProductId;
 const userId = createUserId(123);
 const productId = createProductId(456);
 
-// !info[/getUserById/] Now these cause compile errors!
+// !info[/getUserById\(productId\)/] Now this causes a compile error!
 getUserById(productId);
 
 // Problems with this approach:
-// !warning[/1/] No runtime validation
+// !warning[/createUserId\(-1\)/] No runtime validation for invalid values
 const invalidUserId = createUserId(-1);
-// !warning[/999/] Easy to bypass with casting
+// !warning[/999 as UserId/] Easy to bypass with type casting
 const bypassed: UserId = 999 as UserId; 
 ```
 
@@ -78,7 +79,7 @@ const bypassed: UserId = 999 as UserId;
 The second approach uses a generic Brand type to create opaque types more easily.
 
 ```typescript !
-// !mark(1:5) rgb(34, 197, 94)
+// !mark(1:4) rgb(34, 197, 94)
 type Brand<T, B> = T & { __brand: B };
 
 type UserId = Brand<number, "UserId">;
@@ -98,16 +99,13 @@ function processUser(id: UserId): void {
 
 processUser(userId);
 
-// !info[/processUser\(productId\)/] This won't compile - good! Compile-time type safety prevents mixing IDs
+// !info[/processUser\(productId\)/] This won't compile - compile-time type safety works
 processUser(productId);
 
 // But still no runtime validation
-// !warning[/-1/] No runtime validation means invalid values slip through
+// !warning[/asUserId\(-1\)/] Invalid values slip through without validation
 const invalidUserId = asUserId(-1);
-// !warning[/asUserId\(0\)/] Zero IDs are questionable but still compile
-const zeroUserId = asUserId(0);
-
-// Functions receive potentially invalid data
+// !warning[/processUser\(invalidUserId\)/] Functions receive potentially invalid data
 processUser(invalidUserId);
 ```
 
@@ -116,7 +114,7 @@ processUser(invalidUserId);
 The third approach uses classes to wrap values and provide validation, but has drawbacks.
 
 ```typescript !
-// Class-based validation
+// !mark(1:20) rgb(34, 197, 94)
 class UserId {
   private __brand: undefined; // Prevent structural compatibility
   
@@ -142,7 +140,7 @@ try {
   const userId = new UserId(123);
   const productId = new ProductId(456);
   
-  // Must extract .value property
+  // !warning[/userId\.value/] Must extract .value property everywhere
   console.log(userId.value); // 123
   
   // Type safety works!
@@ -153,6 +151,7 @@ try {
 }
 
 // Problems:
+// !warning[/try.*catch/] Exception-based validation requires try/catch blocks
 // 1. Boxing/unboxing overhead
 // 2. Exception-based validation  
 // 3. Must access .value everywhere
@@ -167,7 +166,7 @@ try {
 import { createRefinedType } from "@carbonteq/refined-type";
 import { z } from "zod";
 
-// Create refined types with built-in validation
+// !mark(5:6) rgb(34, 197, 94)
 const UserId = createRefinedType("UserId", z.number().positive());
 const ProductId = createRefinedType("ProductId", z.number().positive());
 
@@ -179,16 +178,17 @@ type ProductId = typeof ProductId.$infer;
 // const userId: UserId = 123; // ❌ Error
 // const productId: ProductId = 456; // ❌ Error
 
-// Must use .create() for validation
+// !info[/\.create\(\)/] Must use .create() method for validation
 const userIdResult = UserId.create(123);
 const productIdResult = ProductId.create(456);
 
-// All creation returns Result<T, Error> - no exceptions!
+// !info[/Result<T, Error>/] All creation returns Result type - no exceptions!
 console.log(userIdResult.isOk()); // true
 console.log(productIdResult.isOk()); // true
 
 // Invalid values return errors
 const invalidResult = UserId.create(-1);
+// !warning[/invalidResult\.isOk\(\)/] Invalid values return errors safely
 console.log(invalidResult.isOk()); // false
 
 // Type-safe functions only accept branded types
@@ -208,6 +208,7 @@ import { Result } from "@carbonteq/fp";
 const userIdResult = UserId.create(123);
 const invalidResult = UserId.create(-1);
 
+// !mark(1:8) rgb(34, 197, 94)
 // Elegant error handling without try/catch
 if (userIdResult.isOk()) {
   const validUserId = userIdResult.unwrap();
@@ -217,14 +218,16 @@ if (userIdResult.isOk()) {
   console.log(`Validation failed: ${error.message}`);
 }
 
-// Pattern matching style handling
+
 userIdResult.match({
   Ok: (userId) => console.log(`Success: ${userId}`),
   Err: (error) => console.log(`Error: ${error.message}`)
 });
 
+// !mark(1:11) rgb(34, 197, 94)
 // Functional composition with Results
-function createIds(userNum: number, productNum: number): Result<{userId: UserId, productId: ProductId}, Error> {
+function createIds(userNum: number, productNum: number): 
+Result<{userId: UserId, productId: ProductId}, Error> {
   const userResult = UserId.create(userNum);
   const productResult = ProductId.create(productNum);
   
@@ -235,9 +238,12 @@ function createIds(userNum: number, productNum: number): Result<{userId: UserId,
 
 // Usage
 const idsResult = createIds(123, 456);
+// !info[/idsResult\.match/] Consistent error handling pattern throughout
 idsResult.match({
-  Ok: ({userId, productId}) => console.log("IDs created:", userId, productId),
-  Err: (error) => console.error("Creation failed:", error.message)
+  Ok: ({userId, productId}) => 
+    console.log("IDs created:", userId, productId),
+  Err: (error) => 
+    console.error("Creation failed:", error.message)
 });
 ```
 
@@ -248,6 +254,7 @@ Create domain-specific error types for better error handling and business logic 
 ```typescript !
 import { RefinedValidationError } from "@carbonteq/refined-type";
 
+// !mark(1:15) rgb(34, 197, 94)
 // Custom error type for user IDs
 class InvalidUserIdError extends RefinedValidationError {
   constructor(data: unknown, err: z.ZodError) {
@@ -275,6 +282,7 @@ validResult.match({
   Err: (error) => console.log("Unexpected error")
 });
 
+// !callout[/instanceof InvalidUserIdError/] Domain-specific error handling
 invalidResult.match({
   Ok: (userId) => console.log("Unexpected success"),
   Err: (error) => {
@@ -293,9 +301,13 @@ Access underlying primitive values when needed for calculations or external APIs
 ```typescript !
 import { type Unbrand } from "@carbonteq/refined-type";
 
-// Define refined numeric types
+// !mark(2:6) rgb(34, 197, 94)
+// Create refined types with Zod
 const Price = createRefinedType("Price", z.number().positive());
-const Quantity = createRefinedType("Quantity", z.number().int().positive());
+const Quantity = createRefinedType(
+  "Quantity", 
+  z.number().int().positive()
+);
 
 type Price = typeof Price.$infer;
 type Quantity = typeof Quantity.$infer;
@@ -303,6 +315,7 @@ type Quantity = typeof Quantity.$infer;
 // Get the underlying primitive type
 type UnbrandedPrice = Unbrand<Price>; // number
 
+// !mark(2:8) rgb(34, 197, 94)
 // Business logic functions using branded types
 function calculateTotal(price: Price, quantity: Quantity): number {
   // Extract primitive values for calculations
@@ -316,7 +329,7 @@ function calculateTotal(price: Price, quantity: Quantity): number {
 const priceResult = Price.create(29.99);
 const quantityResult = Quantity.create(3);
 
-// Combine validations
+// !info[/Result\.CombineResults/] Combine multiple validations elegantly
 const calculationResult = Result.CombineResults([
   priceResult, 
   quantityResult
@@ -335,13 +348,17 @@ calculationResult.match({
 Compose refined types into complex data structures for comprehensive validation.
 
 ```typescript !
-// Define multiple refined types
+import { createRefinedType } from "@carbonteq/refined-type";
+import { z } from "zod";
+
+// !mark(1:2) rgb(34, 197, 94)
 const Name = createRefinedType("Name", z.string().min(2).max(50));
 const Age = createRefinedType("Age", z.number().int().min(0).max(120));
 
 type Name = typeof Name.$infer;
 type Age = typeof Age.$infer;
 
+// !mark(2:6) rgb(34, 197, 94)
 // User object with refined types
 interface User {
   id: UserId;
@@ -349,11 +366,9 @@ interface User {
   age: Age;
 }
 
+// !mark(2:12) rgb(34, 197, 94)
 // Validation function for complete user objects
-function createUser(userData: {
-  id: unknown;
-  name: unknown;
-  age: unknown;
+function createUser(userData: {id: unknown; name: unknown; age: unknown;
 }): Result<User, Error> {
   
   // Validate each field
@@ -361,27 +376,16 @@ function createUser(userData: {
   const nameResult = Name.create(userData.name);
   const ageResult = Age.create(userData.age);
   
-  // Combine all validations
-  return Result.CombineResults([
-    idResult,
-    nameResult,
-    ageResult
-  ]).map(([id, name, age]) => ({
-    id,
-    name,
-    age
-  }));
+  return Result.CombineResults([idResult, nameResult, ageResult])
+  .map(([id, name, age]) => ({id,name,age}));
 }
 
 // Usage with error handling
-const userData = {
-  id: 123,
-  name: "John Doe",
-  age: 30
-};
+const userData = {id: 123, name: "John Doe", age: 30};
 
 createUser(userData).match({
   Ok: (user) => {
+    // !info[/\.primitive\(/] Extract primitive values when needed
     console.log("User created:", {
       id: UserId.primitive(user.id),
       name: Name.primitive(user.name),

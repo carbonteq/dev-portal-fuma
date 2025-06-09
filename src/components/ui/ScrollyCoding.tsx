@@ -24,12 +24,12 @@ export function ScrollyCoding(props: unknown) {
         <div className="flex">
           
           {/* Left Side - Steps Content */}
-          <div className="flex-1 grid grid-cols-1 gap-y-20 border-r border-gray-200 mb-[40vh]">
+          <div className="flex-1 grid grid-cols-1 gap-y-24 border-r border-gray-200 mb-[60vh]">
             {steps.map((step, i) => (
               <Selectable
                 key={i}
                 index={i}
-                selectOn={["click"]}
+                selectOn={["click", "scroll"]}
                 className="block border-l-4 border-transparent data-[selected=true]:bg-gray-50 data-[selected=true]:border-black transition-all duration-300 cursor-pointer"
               >
                 <div className="p-4 border-b border-gray-100 last:border-b-0">
@@ -51,7 +51,7 @@ export function ScrollyCoding(props: unknown) {
           </div>
 
                     {/* Right Side - Code Display */}
-          <div className="w-[40vw] max-w-xl bg-gray-50">
+          <div className="w-[41vw] max-w-xl bg-gray-50">
             <div className="top-10 sticky overflow-auto">
               <Selection
             from={steps.map((step, i) => (
@@ -72,7 +72,7 @@ export async function Code({ codeblock }: { codeblock: RawCode }) {
     <Pre
       code={highlighted}
       handlers={[tokenTransitions, wordWrap, callout, warning, error, info, mark]}
-      className="min-h-[40rem] border px-3 py-3 rounded-md text-sm"
+      className="min-h-[40rem] border px-3 py-3 rounded-md rounded-l-none text-sm"
     />
   )
 }
