@@ -5,83 +5,94 @@
 
 /* Global body font override */
 body {
-    font-family: var(--font-vactory) !important;
+  font-family: var(--font-vactory) !important;
+}
+
+/* Article background pattern */
+article {
+  background-size: 16px 16px;
+  background-image: radial-gradient(circle, #e0efd3 1px, #afbdb500 1px);
+}
+
+.dark article {
+  background-image: radial-gradient(circle, #272f20 1px, #e7e7e700 0);
+}
+
+/* Article content headings - target FumaDocs content areas */
+article h1,
+article h2,
+article h3,
+article h4,
+article h5,
+article h6,
+.nd-content h1,
+.nd-content h2,
+.nd-content h3,
+.nd-content h4,
+.nd-content h5,
+.nd-content h6,
+[data-content] h1,
+[data-content] h2,
+[data-content] h3,
+[data-content] h4,
+[data-content] h5,
+[data-content] h6 {
+  font-family: var(--font-kghappy) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-weight: normal;
+  color: var(--color-fd-primary);
+
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: 5px;
+    color: inherit;
   }
-  
-  /* Article background pattern */
-  article {
-    background-size: 16px 16px;
-    background-image: radial-gradient(circle,#e0efd3 1px,#afbdb500 1px);
-  }
-  
-  .dark article {
-    background-image: radial-gradient(circle, #32382c 1px, #afbdb500 1px);
-  }
-  
-  /* Article content headings - target FumaDocs content areas */
-  article h1,
-  article h2,
-  article h3,
-  article h4,
-  article h5,
-  article h6,
-  .nd-content h1,
-  .nd-content h2,
-  .nd-content h3,
-  .nd-content h4,
-  .nd-content h5,
-  .nd-content h6,
-  [data-content] h1,
-  [data-content] h2,
-  [data-content] h3,
-  [data-content] h4,
-  [data-content] h5,
-  [data-content] h6 {
-    font-family: var(--font-kghappy) !important;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+
+  strong {
     font-weight: normal;
-    color: var(--color-fd-primary);
-    &:hover {
-      text-decoration: underline;
-      text-underline-offset: 5px;
-      color: inherit;
-    }
-  
-    strong {
-      font-weight: normal;
-    }
   }
-  
-  /* FumaDocs specific components */
-  [data-docs-title] {
-    font-family: var(--font-kghappy) !important;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+}
+
+.scrolly-coding-container h4{
+  color: #2390b5;
+
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: 5px;
+    color: #007399;
+  }
+}
+
+/* FumaDocs specific components */
+[data-docs-title] {
+  font-family: var(--font-kghappy) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-weight: normal;
+
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: 5px;
+    color: inherit;
+  }
+
+  strong {
     font-weight: normal;
-  
-    &:hover {
-      text-decoration: underline;
-      text-underline-offset: 5px;
-      color: inherit;
-    }
-  
-    strong {
-      font-weight: normal;
-    }
   }
-  
-  
-  
-  
-  /* Apply kgHappy font using Tailwind class for better performance */
-  .font-kghappy {
-    font-family: var(--font-kghappy) !important;
-  }
-  
-  /* Ensure sidebar and navigation still use main font */
-  #nd-sidebar,
-  .nd-nav,
-  nav {
-    font-family: var(--font-vactory) !important;
-  } 
+}
+
+
+
+
+/* Apply kgHappy font using Tailwind class for better performance */
+.font-kghappy {
+  font-family: var(--font-kghappy) !important;
+}
+
+/* Ensure sidebar and navigation still use main font */
+#nd-sidebar,
+.nd-nav,
+nav {
+  font-family: var(--font-vactory) !important;
+}
