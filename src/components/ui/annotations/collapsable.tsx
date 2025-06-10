@@ -27,7 +27,7 @@ export const collapsable: AnnotationHandler = {
     },
     Block: ({ annotation, children }) => {
         return (
-            <Collapsible defaultOpen={annotation.query !== "collapsed"} className="pt-1 data-[state=closed]:bg-[var(--ch-17)]">
+            <Collapsible defaultOpen={annotation.query !== "collapsed"} className="pt-1 data-[state=closed]:bg-[var(--ch-17)] data-[state=closed]:-mx-2 data-[state=closed]:pl-2">
                 {children}
             </Collapsible>
         )
