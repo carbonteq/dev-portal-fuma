@@ -1,0 +1,64 @@
+---
+title: Overview
+---
+import { File, Folder, Files } from 'fumadocs-ui/components/files';
+import { User, Gamepad, Tools, Filter } from 'iconoir-react';
+import { BiLogoTypescript } from 'react-icons/bi';
+import { ScrollyCoding } from '@/components/ui/ScrollyCoding';
+
+## Code Organization
+
+The domain layer is organized by business entities and utilities, following domain-driven design principles:
+
+<Files>
+  <Folder name="domain" defaultOpen>    
+    <Folder name="user" defaultOpen icon={<User />}>
+      <File name="user.entity.ts" icon={<BiLogoTypescript />} />
+      <File name="user.guards.ts" icon={<BiLogoTypescript />} />
+      <File name="user.error.ts" icon={<BiLogoTypescript />} />
+      <File name="host.entity.ts" icon={<BiLogoTypescript />} />
+      <File name="address.vo.ts" icon={<BiLogoTypescript />} />
+    </Folder>
+    <Folder name="game" icon={<Gamepad />}>
+      <File name="game.entity.ts" icon={<BiLogoTypescript />} />
+      <File name="game.guards.ts" icon={<BiLogoTypescript />} />
+      <File name="game.error.ts" icon={<BiLogoTypescript />} />
+    </Folder>
+    <Folder name="utils" defaultOpen icon={<Tools />}>
+      <File name="base.entity.ts" icon={<BiLogoTypescript />} />
+      <File name="base.repository.ts" icon={<BiLogoTypescript />} />
+      <File name="base.errors.ts" icon={<BiLogoTypescript />} />
+      <File name="refined.types.ts" icon={<BiLogoTypescript />} />
+      <File name="validation.utils.ts" icon={<BiLogoTypescript />} />
+      <File name="pagination.ts" icon={<BiLogoTypescript />} />
+      <File name="index.ts" icon={<BiLogoTypescript />} />
+    </Folder>
+    <Folder name="refined" icon={<Filter />}>
+      <File name="[custom-refined-type].ts" icon={<BiLogoTypescript />} />
+      <File name="index.ts" icon={<BiLogoTypescript />} />
+    </Folder>
+  </Folder>
+</Files>
+
+## Entity Overview
+
+The domain layer is organized by business/domain concepts, not by technical implementation details.
+
+- Entities are the core of the domain layer.
+- Guard classes are used to validate entities.
+- Error classes are used to represent errors that can occur during the execution of the program.
+- Value objects are used to represent value objects that are not entities.
+- Refined types are used to represent refined types.
+
+<ScrollyCoding>
+
+</ScrollyCoding>
+
+
+## Utilities Overview
+
+### Base Entity (`base.entity.ts`)
+Contains the `SimpleSerialized<T>` type utility for entity serialization.
+
+### Refined Types (`refined.types.ts`)
+Provides `Maybe<T>`, `normalizeMaybe`, and `optionToMaybe` utilities for handling optional values safely.

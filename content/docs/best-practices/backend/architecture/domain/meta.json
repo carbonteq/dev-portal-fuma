@@ -1,0 +1,8 @@
+{
+  "title": "Domain",
+  "defaultOpen": true,
+  "pages": [
+    "domain-overview",
+    "domain-best-practices"
+  ]
+} 

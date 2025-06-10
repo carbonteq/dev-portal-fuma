@@ -7,6 +7,7 @@ import { tokenTransitions } from "./annotations/token-transitions";
 import { wordWrap } from "./annotations/word-wrap";
 import { callout, warning, error, info } from "./annotations/callouts";
 import { mark } from "./annotations/mark";
+import { collapsable, collapseTrigger, collapseContent } from "./annotations/collapsable";
 
 
 // @ts-expect-error - Codehike types are not compatible with Zod
@@ -22,7 +23,7 @@ export function ScrollyCoding(props: unknown) {
       <div className="scrolly-coding-container border border-gray-200 rounded-lg bg-white">
         {/* Content and Code Layout */}
         <div className="flex">
-          
+
           {/* Left Side - Steps Content */}
           <div className="flex-1 grid grid-cols-1 gap-y-24 border-r border-gray-200 mb-[60vh]">
             {steps.map((step, i) => (
@@ -40,7 +41,7 @@ export function ScrollyCoding(props: unknown) {
                     </div>
                     <h4 className="flex-1 font-semibold text-gray-900">{step.title}</h4>
                   </div>
-                  
+
                   {/* Step content */}
                   <div className="prose prose-sm max-w-none text-gray-700">
                     {step.children}
@@ -50,14 +51,14 @@ export function ScrollyCoding(props: unknown) {
             ))}
           </div>
 
-                    {/* Right Side - Code Display */}
+          {/* Right Side - Code Display */}
           <div className="w-[41vw] max-w-xl bg-gray-50">
             <div className="top-10 sticky overflow-auto">
               <Selection
-            from={steps.map((step, i) => (
-              <Code codeblock={step.code} />
-           ))}
-         />
+                from={steps.map((step, i) => (
+                  <Code codeblock={step.code} />
+                ))}
+              />
             </div>
           </div>
         </div>
@@ -71,8 +72,9 @@ export async function Code({ codeblock }: { codeblock: RawCode }) {
   return (
     <Pre
       code={highlighted}
-      handlers={[tokenTransitions, wordWrap, callout, warning, error, info, mark]}
-      className="min-h-[40rem] border px-3 py-3 rounded-md rounded-l-none text-sm"
+      handlers={[
+        tokenTransitions, wordWrap, callout, warning, error, info, mark, collapsable, collapseTrigger, collapseContent]}
+      className="min-h-[40rem] border px-4 py-3 rounded-md rounded-l-none text-sm"
     />
   )
 }

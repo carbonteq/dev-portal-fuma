@@ -1,6 +1,7 @@
 ---
 title: Architecture
 ---
+import { File, Folder, Files } from 'fumadocs-ui/components/files';
 
 At Carbonteq, we have found a great amalgam of architectural patterns and principles, we intend these to be _basic building blocks of reasoning_ which can be used to deduce surprising or difficult things.
 
@@ -36,6 +37,49 @@ Looking at a given project in Carbonteq, you'll typically see the backend divide
 app/application, infra/infrastructure, and web/HTTP. This section provides a brief explanation of the directory
 structure and how it corresponds to the layered architecture outlined above. Any terms that require clarification can
 probably be found in the glossary section below.
+
+<Files>
+  <Folder name="src" defaultOpen>
+    <Folder name="app" defaultOpen>
+      <Folder name="domain">
+        <Folder name="user">
+          <File name="user.entity.ts" />
+          <File name="user.repository.ts" />
+        </Folder>
+        <Folder name="todo">
+          <File name="todo.entity.ts" />
+          <File name="todo.repository.ts" />
+        </Folder>
+        <File name="services/" />
+        <File name="value-objects/" />
+        <File name="utils/" />
+      </Folder>
+      <Folder name="application" defaultOpen>
+        <File name="dto/" />
+        <File name="workflow/" />
+        <File name="services/" />
+      </Folder>
+      <Folder name="infra" defaultOpen>
+        <File name="repositories/" />
+        <File name="services/" />
+        <File name="config/" />
+      </Folder>
+    </Folder>
+    <Folder name="presentation" defaultOpen>
+      <Folder name="http">
+        <File name="controllers/" />
+        <File name="routes/" />
+        <File name="middleware/" />
+      </Folder>
+      <Folder name="cli">
+        <File name="commands/" />
+        <File name="handlers/" />
+      </Folder>
+    </Folder>
+  </Folder>
+  <File name="package.json" />
+  <File name="tsconfig.json" />
+</Files>
 
 ### Domain Layer
 

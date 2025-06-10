@@ -166,7 +166,7 @@ try {
 import { createRefinedType } from "@carbonteq/refined-type";
 import { z } from "zod";
 
-// !mark(5:6) rgb(34, 197, 94)
+// !mark(1:6) rgb(34, 197, 94)
 const UserId = createRefinedType("UserId", z.number().positive());
 const ProductId = createRefinedType("ProductId", z.number().positive());
 
@@ -174,17 +174,19 @@ const ProductId = createRefinedType("ProductId", z.number().positive());
 type UserId = typeof UserId.$infer;
 type ProductId = typeof ProductId.$infer;
 
-// These won't compile - no direct assignment
-// const userId: UserId = 123; // ❌ Error
-// const productId: ProductId = 456; // ❌ Error
 
-// !info[/\.create\(\)/] Must use .create() method for validation
+// !error[/userId/] This won't compile - no direct assignment
+const userId: UserId = 123;
+
+// !error[/productId/] This won't compile - no direct assignment
+const productId: ProductId = 456;
+
+
+// !callout[/userIdResult/] userIdResult.isOk() : true
 const userIdResult = UserId.create(123);
+// !callout[/productIdResult/] productIdResult.isOk() : true
 const productIdResult = ProductId.create(456);
 
-// !info[/Result<T, Error>/] All creation returns Result type - no exceptions!
-console.log(userIdResult.isOk()); // true
-console.log(productIdResult.isOk()); // true
 
 // Invalid values return errors
 const invalidResult = UserId.create(-1);
@@ -224,8 +226,7 @@ userIdResult.match({
   Err: (error) => console.log(`Error: ${error.message}`)
 });
 
-// !mark(1:11) rgb(34, 197, 94)
-// Functional composition with Results
+// !collapse(1:10) collapsed
 function createIds(userNum: number, productNum: number): 
 Result<{userId: UserId, productId: ProductId}, Error> {
   const userResult = UserId.create(userNum);
@@ -238,7 +239,7 @@ Result<{userId: UserId, productId: ProductId}, Error> {
 
 // Usage
 const idsResult = createIds(123, 456);
-// !info[/idsResult\.match/] Consistent error handling pattern throughout
+// Consistent error handling pattern throughout
 idsResult.match({
   Ok: ({userId, productId}) => 
     console.log("IDs created:", userId, productId),
