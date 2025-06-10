@@ -25,7 +25,7 @@ export function ScrollyCoding(props: unknown) {
         <div className="flex">
 
           {/* Left Side - Steps Content */}
-          <div className="flex-1 grid grid-cols-1 gap-y-24 border-r border-gray-200 mb-[60vh]">
+          <div className="basis-[45%] grid grid-cols-1 gap-y-24 border-r border-gray-200 mb-[60vh]">
             {steps.map((step, i) => (
               <Selectable
                 key={i}
@@ -52,7 +52,7 @@ export function ScrollyCoding(props: unknown) {
           </div>
 
           {/* Right Side - Code Display */}
-          <div className="w-[41vw] max-w-xl bg-gray-50">
+          <div className="basis-[55%] min-w-[400px] xl:w-[500px] max-w-xl bg-gray-50">
             <div className="top-10 sticky overflow-auto">
               <Selection
                 from={steps.map((step, i) => (
