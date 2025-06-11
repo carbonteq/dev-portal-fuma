@@ -25,7 +25,7 @@ export function ScrollyCoding(props: unknown) {
         <div className="flex">
 
           {/* Left Side - Steps Content */}
-          <div className="basis-[45%] grid grid-cols-1 gap-y-24 border-r border-gray-200 mb-[60vh]">
+          <div className="basis-[45%] grid grid-cols-1 gap-y-40 border-r border-gray-200 mb-[60vh]">
             {steps.map((step, i) => (
               <Selectable
                 key={i}
