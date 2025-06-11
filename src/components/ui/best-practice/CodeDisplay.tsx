@@ -13,7 +13,7 @@ export function CodeDisplay({ doCodeRendered, dontCodeRendered }: CodeDisplayPro
   const codeToShow = selected === 'do' ? doCodeRendered : dontCodeRendered;
   
   return (
-    <div className="p-4">
+    <div className="p-1">
            
       {codeToShow ? (
         <div>

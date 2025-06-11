@@ -2,10 +2,551 @@
 title: Best Practices
 ---
 
-## Domain Driven Design
+## Import Reference Patterns
 
-## Domain Driven Design
+<BestPractice title="Import Reference Patterns">
 
-## Domain Driven Design
+Use configured path aliases for clean module boundaries and avoid deep relative path navigation.
 
-## Domain Driven Design
+## !dont relative-imports
+
+**Use relative imports for cross-folder navigation.** This creates:
+- Brittle dependencies with deep `../../../` paths
+- Difficult refactoring when moving files
+- Obscured module boundaries
+- Inconsistent import patterns
+
+```typescript !example
+// Current file: domain/entities/user/host.entity.ts
+
+// Bad: Deep relative imports for cross-folder access
+import type {IEntity} from "../../../utils/base.entity";
+import type {UUID} from "../../../utils/refined.types";
+import {BaseEntity} from "../../../utils/base.entity";
+
+// Bad: Mixing relative and path alias patterns
+import type {IEntity} from "@domain/utils/base.entity";     // Path alias
+import {BaseEntity} from "../../../utils/base.entity";     // Relative import for same target
+
+// Bad: Relative imports for different folders
+import {UserRepository} from "../user/user.repository";    // Should use @domain/entities/user/
+import {JamEntity} from "../../jam/jam.entity";           // Should use @domain/entities/jam/
+```
+
+## !do path-aliases
+
+**Use TypeScript path aliases for cross-folder imports.** They provide:
+- **Clear module boundaries** with consistent import paths
+- **Easy refactoring** when restructuring code
+- **Clean navigation** without deep relative paths
+- **Consistent patterns** across the codebase
+
+```typescript !example
+// Current file: domain/entities/user/host.entity.ts
+
+// Good: Path aliases for cross-folder imports
+import type {IEntity} from "@domain/utils/base.entity";
+import type {UUID} from "@domain/utils/refined.types";
+import {BaseEntity} from "@domain/utils/base.entity";
+import {HostRepository} from "@domain/entities/user/host.repository";
+
+// Good: Relative import for same folder
+import {HostError} from "./host.error";           // Same folder
+import {HostGuards} from "./host.guards";         // Same folder
+
+// Good: Import organization
+import {Effect as E} from "effect";               // External library
+import type {SerializedHost} from "./host.types"; // Local type
+```
+
+</BestPractice>
+
+## Structured Class Method Ordering
+
+<BestPractice title="Structured Class Method Ordering">
+
+Organize entity classes with consistent method ordering for predictable code organization and improved maintainability.
+
+## !dont random-ordering
+
+**Place methods in random order without structure.** This causes:
+- Difficult code navigation
+- Reduced code readability
+- Inconsistent patterns across entities
+- Mixed concerns making class structure unclear
+
+```typescript !example
+export class Host extends BaseEntity implements IEntity {
+    readonly userId: UUID;
+    
+    // Bad: Mixed ordering
+    updateProfile(updates: SerializedHostUpdate): E.Effect<Host, HostError, never> {
+        // Domain method mixed with constructor
+    }
+    
+    private constructor(data: Readonly<HostType>) {
+        // Constructor in middle
+    }
+    
+    get displayName(): string {
+        // Getter after domain method
+    }
+    
+    static create(input: SerializedHost): E.Effect<Host, HostError, never> {
+        // Factory method at bottom
+    }
+    
+    serialized(): E.Effect<SerializedHost, ParseResult.ParseError, never> {
+        // Serialization mixed in
+    }
+}
+```
+
+## !do functional-categories
+
+**Organize methods by functional category.** This provides:
+- **Predictable code organization** with consistent structure
+- **Improved maintainability** through logical grouping
+- **Easy navigation** with methods in expected places
+- **Clear separation** of concerns
+
+```typescript !example
+export class Host extends BaseEntity implements IEntity {
+    readonly userId: UUID;
+    readonly dob: O.Option<Date>;
+    
+    // Static factory methods
+    static create(input: SerializedHost): E.Effect<Host, HostError, never> {
+        return pipe(/* validation and creation logic */);
+    }
+    
+    static fromSerialized(serialized: SerializedHost): Host {
+        return E.runSync(Host.create(serialized));
+    }
+    
+    // Constructor (private)
+    private constructor(data: Readonly<HostType>, address: Address, socialLinks: SocialLinks) {
+        super();
+        // Initialize fields
+    }
+    
+    // Getters and computed properties
+    get displayName(): string {
+        return `Host ${this.userId}`;
+    }
+    
+    get hasCompleteProfile(): boolean {
+        return O.isSome(this.dob) && O.isSome(this.phoneNumber);
+    }
+    
+    // Public domain methods
+    updateProfile(updates: SerializedHostUpdate): E.Effect<Host, HostError, never> {
+        return this.serialized().pipe(/* update logic */);
+    }
+    
+    // Serialization methods
+    serialized(): E.Effect<SerializedHost, ParseResult.ParseError, never> {
+        return S.encode(HostSchema)(this);
+    }
+}
+```
+
+</BestPractice>
+
+## Schema-Derived Type Definitions
+
+<BestPractice title="Schema-Derived Type Definitions">
+
+Use schema-first approach to ensure single source of truth for type definitions.
+
+## !dont separate-types
+
+**Define types separately from schemas.** This leads to:
+- Duplicated type definitions
+- Inconsistencies between schema and types
+- Maintenance issues when schema changes
+- Type mismatches with complex nested relationships
+
+```typescript !example
+// Bad: Separate type definition
+export interface JamType {
+    id: UUID;
+    title: string;
+    rounds: Round[]; // Duplicated from schema
+}
+
+// Bad: Direct encoded type usage with entity confusion
+export type SerializedJam = S.Schema.Encoded<typeof JamSchema>; // Mixes entity and serialized types
+
+// Bad: Manual type definition
+export interface SerializedJam {
+    id: string;
+    title: string;
+    rounds: any[]; // Loses type safety
+}
+```
+
+## !do schema-derived
+
+**Derive types from schemas with proper nested entity handling.** This provides:
+- **Single source of truth** for type definitions
+- **Automatic consistency** between schema and types
+- **Proper type boundaries** for nested entities
+- **Type safety** throughout the application
+
+```typescript !example
+// Define schema first
+export const JamSchema = S.Struct({
+    id: StringToUUID,
+    title: S.String,
+    rounds: S.Array(RoundSchema) // Round entities
+});
+
+// Derive runtime type
+export type JamType = S.Schema.Type<typeof JamSchema>;
+
+// Derive serialized type with nested entity handling
+export type SerializedJam = Omit<S.Schema.Encoded<typeof JamSchema>, "rounds"> & {
+    rounds: readonly SerializedRound[]; // Use serialized form of nested entities
+};
+```
+
+</BestPractice>
+
+## Entity Mutation Patterns
+
+<BestPractice title="Entity Mutation Patterns">
+
+Maintain data integrity through immutable entity updates with proper validation.
+
+## !dont direct-mutation
+
+**Mutate entity properties directly.** This approach:
+- Breaks immutability principles
+- Bypasses validation logic
+- Causes inconsistent state
+- Makes tracking changes and debugging difficult
+
+```typescript !example
+// Bad: Direct mutation
+updateProfile(updates: SerializedHostUpdate): void {
+    this.firstName = updates.firstName;
+    this.lastName = updates.lastName;
+    this.updatedAt = new Date(); // Direct assignment
+}
+
+// Bad: Returning mutated this
+updateProfile(updates: SerializedHostUpdate): Host {
+    Object.assign(this, updates);
+    return this; // Returns same instance
+}
+
+// Bad: No validation on updates
+updateProfile(updates: any): Host {
+    return new Host({...this, ...updates}); // Bypasses create() validation
+}
+```
+
+## !do immutable-updates
+
+**Return new entity instances with serialization.** This ensures:
+- **Data integrity** through immutable updates
+- **Proper validation** on every change
+- **Consistent state** throughout the application
+- **Easy debugging** with clear change tracking
+
+```typescript !example
+updateProfile(updates: SerializedHostUpdate): E.Effect<Host, HostError, never> {
+    return this.serialized().pipe(
+        E.flatMap((currentSerialized) => {
+            const updatedData: SerializedHost = {
+                ...currentSerialized,
+                ...updates,
+                updatedAt: new Date() // Always update timestamp
+            };
+
+            return Host.create(updatedData); // Create new instance with validation
+        })
+    );
+}
+```
+
+</BestPractice>
+
+## Property Declaration Patterns
+
+<BestPractice title="Property Declaration Patterns">
+
+Enforce immutability and explicit optionality at compile time to prevent runtime errors.
+
+## !dont mutable-nullable
+
+**Use mutable properties with nullable types.** This allows:
+- Uncontrolled state changes bypassing validation
+- Runtime null reference errors
+- Hidden optionality that's not explicit
+- Mixed mutability patterns creating confusion
+
+```typescript !example
+// Bad: Mutable properties
+export class Host extends BaseEntity implements IHost {
+    userId: UUID;              // Can be reassigned
+    dob?: Date;               // Hidden optionality
+    phoneNumber: number | null; // Nullable instead of Option
+    address: Address;          // Mutable reference
+
+    // Bad: Allows direct mutation
+    setPhoneNumber(phone: number): void {
+        this.phoneNumber = phone; // Direct assignment
+    }
+}
+
+// Bad: Mixed mutability
+export class Host extends BaseEntity implements IHost {
+    readonly userId: UUID;     // Good
+    dob: Date | undefined;     // Bad: mutable and nullable
+    phoneNumber?: number;      // Bad: hidden optionality
+}
+```
+
+## !do readonly-option
+
+**Use readonly properties with Option types.** They provide:
+- **Compile-time immutability** enforcement
+- **Explicit optionality** with Option types
+- **Prevention of null reference errors**
+- **Clear intent** about property mutability
+
+```typescript !example
+export class Host extends BaseEntity implements IHost {
+    readonly userId: UUID;
+    readonly dob: O.Option<Date>;
+    readonly phoneNumber: O.Option<number>;
+    readonly address: Address;
+    readonly firstName: string;
+    readonly lastName: string;
+
+    // Properties cannot be reassigned after construction
+    // Optional values are explicitly handled with Option
+}
+```
+
+</BestPractice>
+
+## Schema and Entity Optional Property Patterns
+
+<BestPractice title="Schema and Entity Optional Property Patterns">
+
+Create type-safe optionality that's consistent between validation and runtime.
+
+## !dont inconsistent-optional
+
+**Use inconsistent optional type handling.** This creates:
+- Type safety issues with missing Optional wrapper
+- Runtime errors from nullable types
+- Confusion with mixed optional patterns
+- Validation inconsistencies
+
+```typescript !example
+// Bad: Missing Optional wrapper in schema
+export const HostSchema = S.Struct({
+    dob: S.DateFromSelf,           // Required in schema
+    phoneNumber: S.Number,         // Required in schema
+});
+
+// Bad: Nullable types instead of Option
+export class Host extends BaseEntity implements IHost {
+    readonly dob?: Date;                    // TypeScript optional
+    readonly phoneNumber: number | null;    // Nullable type
+    readonly address: Address | undefined;  // Undefined type
+}
+
+// Bad: Mixed patterns
+export class Host extends BaseEntity implements IHost {
+    readonly dob: O.Option<Date>;     // Good
+    readonly phoneNumber?: number;    // Bad: inconsistent with schema
+}
+```
+
+## !do consistent-optional
+
+**Use consistent Optional types across schema and entity.** This ensures:
+- **Type-safe optionality** throughout the system
+- **Consistent validation** between schema and runtime
+- **Clear intent** about optional vs required fields
+- **Runtime safety** with proper null handling
+
+```typescript !example
+// Schema definition with Optional wrapper
+export const HostSchema = S.Struct({
+    dob: Optional(S.DateFromSelf.pipe(HostGuards.ValidDateOfBirth)),
+    phoneNumber: Optional(S.Number.pipe(HostGuards.ValidPhoneNumber)),
+    address: AddressSchema, // Required field
+});
+
+// Entity properties with matching Option types
+export class Host extends BaseEntity implements IHost {
+    readonly dob: O.Option<Date>;           // Matches Optional(DateFromSelf)
+    readonly phoneNumber: O.Option<number>; // Matches Optional(Number)
+    readonly address: Address;              // Required field
+}
+```
+
+</BestPractice>
+
+## Value Object Instantiation Patterns
+
+<BestPractice title="Value Object Instantiation Patterns">
+
+Ensure all validations happen in the proper Effect chain with separated concerns.
+
+## !dont internal-creation
+
+**Create complex objects inside constructor or after entity creation.** This approach:
+- Breaks validation flow and Effect chain
+- Mixes validation concerns with construction logic
+- Leads to partially valid entities
+- Creates inconsistent error handling
+
+```typescript !example
+// Bad: Complex object creation inside constructor
+private constructor(data: SerializedHost) {
+    super();
+    // Validation happens inside constructor - breaks Effect chain
+    this.address = new Address(data.address);        // No validation
+    this.socialLinks = new SocialLinks(data.socialLinks); // No validation
+}
+
+// Bad: Separate validation steps
+static create(input: SerializedHost): E.Effect<Host, HostError, never> {
+    return S.decodeUnknown(HostSchema)(input).pipe(
+        E.map((data) => {
+            const host = new Host(data); // Entity created before all validation
+            // Validation happens after entity creation
+            host.validateAddress();      // Separate validation step
+            host.validateSocialLinks();  // Not in Effect chain
+            return host;
+        })
+    );
+}
+
+// Bad: Manual object creation without validation
+static create(input: SerializedHost): Host {
+    const address = { ...input.address };           // No Address.create()
+    const socialLinks = { ...input.socialLinks };   // No SocialLinks.create()
+    return new Host(input, address, socialLinks);   // No validation at all
+}
+```
+
+## !do external-validation
+
+**Create complex value objects with external validation before constructor.** This ensures:
+- **Proper Effect chain** with all validations
+- **Separated validation concerns** from construction
+- **Complete validation** before entity creation
+- **Consistent error handling** throughout the system
+
+```typescript !example
+static create(input: SerializedHost): E.Effect<Host, HostError, never> {
+    return S.decodeUnknown(HostSchema)(input).pipe(
+        E.flatMap((data) => {
+            // Create complex value objects with their own validation
+            return E.all([
+                Address.create(input.address),           // Address validates itself
+                SocialLinks.create(input.socialLinks)   // SocialLinks validates itself
+            ]).pipe(
+                E.map(([address, socialLinks]) => 
+                    new Host(data, address, socialLinks) // Constructor receives validated objects
+                )
+            );
+        })
+    );
+}
+
+// Constructor receives pre-validated complex objects
+private constructor(
+    data: HostType, 
+    address: Address,      // Already validated
+    socialLinks: SocialLinks // Already validated
+) {
+    super();
+    this.address = address;
+    this.socialLinks = socialLinks;
+}
+```
+
+</BestPractice>
+
+## Error Class Definition Patterns
+
+<BestPractice title="Error Class Definition Patterns">
+
+Create domain-specific errors with structured context for better debugging and error handling.
+
+## !dont generic-errors
+
+**Use generic errors without context or structure.** This provides:
+- No domain context for debugging
+- Inconsistent error handling patterns
+- Missing structured information
+- Difficult error case handling
+
+```typescript !example
+// Bad: Generic Error with no domain context
+export class HostError extends Error {
+    constructor(message: string) {
+        super(message); // No structured information
+    }
+}
+
+// Bad: String literal errors
+throw new Error("Host validation failed"); // No context about what failed
+
+// Bad: Inconsistent error messages
+throw new Error("Invalid email");           // Different format
+throw new Error("Host phone number bad");   // Inconsistent naming
+throw new Error("ERROR: dob wrong");        // No standardization
+
+// Bad: No inheritance hierarchy
+export class HostValidationError extends Error { // Should extend ValidationError
+    constructor(message: string) {
+        super(message); // Loses base error categorization
+    }
+}
+
+// Bad: No structured parameters
+export class HostValidationError extends ValidationError {
+    constructor(message: string) { // No field/value context
+        super(message);
+    }
+}
+```
+
+## !do structured-errors
+
+**Create domain-specific errors with structured context.** They provide:
+- **Clear domain context** for specific errors
+- **Structured parameters** with field, value, and details
+- **Consistent message formatting** across the domain
+- **Proper inheritance hierarchy** for error categorization
+
+```typescript !example
+export class HostValidationError extends ValidationError {
+    constructor(field: string, value: unknown, details?: string) {
+        super(`Host validation failed for ${field}: ${value}${details ? ` - ${details}` : ""}`);
+    }
+}
+
+// Usage examples
+new HostValidationError("email", "invalid-email", "Must be valid email format");
+new HostValidationError("phoneNumber", 12345, "Must be 10 digits");
+new HostValidationError("dob", "2030-01-01"); // No details needed
+
+// Domain error union type
+export type HostError = 
+    | HostValidationError 
+    | HostNotFoundError 
+    | HostAlreadyExistsError;
+```
+
+</BestPractice>
