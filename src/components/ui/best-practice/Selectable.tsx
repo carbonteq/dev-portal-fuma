@@ -35,7 +35,7 @@ export function Selectable({ type, children, className = '' }: SelectableProps) 
       {isSelected && (
         <motion.div
           layoutId={layoutId}
-          className={`absolute inset-0 bg-[#030303] ${type === 'dont' ? 'rounded-tl-lg' : 'rounded-tr-lg'}`}
+          className={`absolute inset-0 bg-[#0D0D0D] ${type === 'dont' ? 'rounded-tl-lg' : 'rounded-tr-lg'}`}
           transition={{
             type: "spring",
             stiffness: 200,
