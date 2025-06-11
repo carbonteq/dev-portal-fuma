@@ -8,6 +8,7 @@
 
 :root {
   --fd-sidebar-width: 240px;
+  --fd-page-width: 1400px;
 }
 
 /* Global body font override */
