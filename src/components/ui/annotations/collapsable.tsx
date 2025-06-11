@@ -51,7 +51,7 @@ export const collapseTrigger: AnnotationHandler = {
     Line: (props) => {
         const icon = props.data?.icon as React.ReactNode
         return (
-            <div className="table-row w-full group-data-[state=closed]:bg-[var(--ch-17)]">
+            <div className="table-row w-full">
                 <span className="absolute left-[3px] w-2 text-center table-cell">{icon}</span>
                 <div className="table-cell text-left">
                     <InnerLine merge={props} />

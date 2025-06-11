@@ -39,7 +39,7 @@ export function ScrollyCoding(props: unknown) {
                     <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold">
                       {i + 1}
                     </div>
-                    <h4 className="flex-1 font-semibold text-gray-900">{step.title}</h4>
+                    <h4 className="flex-1 font-semibold text-gray-900 not-prose">{step.title}</h4>
                   </div>
 
                   {/* Step content */}

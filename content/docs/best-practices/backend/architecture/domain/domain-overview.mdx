@@ -6,39 +6,6 @@ import { User, Gamepad, Tools, Filter } from 'iconoir-react';
 import { BiLogoTypescript } from 'react-icons/bi';
 import { ScrollyCoding } from '@/components/ui/ScrollyCoding';
 
-## Code Organization
-
-The domain layer is organized by business entities and utilities, following domain-driven design principles:
-
-<Files>
-  <Folder name="domain" defaultOpen>    
-    <Folder name="user" defaultOpen icon={<User />}>
-      <File name="user.entity.ts" icon={<BiLogoTypescript />} />
-      <File name="user.guards.ts" icon={<BiLogoTypescript />} />
-      <File name="user.error.ts" icon={<BiLogoTypescript />} />
-      <File name="host.entity.ts" icon={<BiLogoTypescript />} />
-      <File name="address.vo.ts" icon={<BiLogoTypescript />} />
-    </Folder>
-    <Folder name="game" icon={<Gamepad />}>
-      <File name="game.entity.ts" icon={<BiLogoTypescript />} />
-      <File name="game.guards.ts" icon={<BiLogoTypescript />} />
-      <File name="game.error.ts" icon={<BiLogoTypescript />} />
-    </Folder>
-    <Folder name="utils" defaultOpen icon={<Tools />}>
-      <File name="base.entity.ts" icon={<BiLogoTypescript />} />
-      <File name="base.repository.ts" icon={<BiLogoTypescript />} />
-      <File name="base.errors.ts" icon={<BiLogoTypescript />} />
-      <File name="refined.types.ts" icon={<BiLogoTypescript />} />
-      <File name="validation.utils.ts" icon={<BiLogoTypescript />} />
-      <File name="pagination.ts" icon={<BiLogoTypescript />} />
-      <File name="index.ts" icon={<BiLogoTypescript />} />
-    </Folder>
-    <Folder name="refined" icon={<Filter />}>
-      <File name="[custom-refined-type].ts" icon={<BiLogoTypescript />} />
-      <File name="index.ts" icon={<BiLogoTypescript />} />
-    </Folder>
-  </Folder>
-</Files>
 
 ## Entity Evolution: Building a Robust Host Entity
 
@@ -48,7 +15,7 @@ This section demonstrates the step-by-step evolution of a Host entity from basic
 
 ## !!steps Foundation - Interface and Basic Class
 
-Start with the fundamental building blocks - create the IHost interface that extends the base IEntity and establish the Host class structure.
+Let's start building our Host entity from scratch. We'll begin with the essential pieces - an interface that defines what a host should look like, and a basic class to implement it.
 
 ```typescript !
 import { BaseEntity, IEntity } from "@domain/utils/base.entity";
@@ -56,15 +23,15 @@ import { UUID } from "@domain/utils/refined.types";
 import { Address } from "./address.vo";
 import { SocialLinks } from "./socialLinks.vo";
 
-// !mark(1:7) rgb(34, 197, 94)
+// !mark(1:7) #22c55e
 interface IHost extends IEntity {
-  readonly userId: UUID;
-  readonly dob: Date;
-  readonly phoneNumber: number;
-  readonly profileImage: string;
+  userId: UUID;
+  dob: Date;
+  phoneNumber: number;
+  profileImage: string;
 }
 
-// !mark(1:3) rgb(34, 197, 94)
+// !mark(1:3) #22c55e
 export class Host extends BaseEntity implements IHost {
   // Properties will be added in the next step
 }
@@ -72,7 +39,7 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Adding Properties with Proper Types
 
-Add class properties with appropriate types, establishing the structure for our Host entity.
+Now that we have the foundation, let's add the actual properties our host will need. We'll start with basic types and see how this evolves.
 
 ```typescript !
 // !collapse(1:5) collapsed
@@ -86,14 +53,14 @@ import { SocialLinks } from "./socialLinks.vo";
 // !collapse(1:7) collapsed
 // Collapsed Domain interface definition
 interface IHost extends IEntity {
-  readonly userId: UUID;
-  readonly dob: Date;
-  readonly phoneNumber: number;
-  readonly profileImage: string;
+  userId: UUID;
+  dob: Date;
+  phoneNumber: number;
+  profileImage: string;
 }
 
 export class Host extends BaseEntity implements IHost {
-  // !mark(1:6) rgb(34, 197, 94)
+  // !mark(1:6) #22c55e
   userId: UUID;
   dob: Date;
   phoneNumber: number;
@@ -105,28 +72,28 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Making Properties Optional with Option&lt;T&gt;
 
-Refactor properties to use `Option<T>` for optional fields, showing the shift from nullable types to functional programming patterns for better type safety.
+As we think about real-world data, we realize that not all host information might be available immediately. Let's introduce `Option<T>` to handle missing values more safely than traditional null checks.
 
 ```typescript !
 import { BaseEntity, IEntity } from "@domain/utils/base.entity";
 import { UUID } from "@domain/utils/refined.types";
 import { Address } from "./address.vo";
 import { SocialLinks } from "./socialLinks.vo";
-// !mark(1:1) rgb(34, 197, 94)
+// !mark(1:1) #22c55e
 import { Option as O } from "effect";
 
 
 interface IHost extends IEntity {
-  readonly userId: UUID;
-  // !mark(1:3) rgb(34, 197, 94)
-  readonly dob: O.Option<Date>;
-  readonly phoneNumber: O.Option<number>;
-  readonly profileImage: O.Option<string>;
+  userId: UUID;
+  // !mark(1:3) #22c55e
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
 }
 
 export class Host extends BaseEntity implements IHost {
   userId: UUID;
-  // !mark(1:3) rgb(34, 197, 94)
+  // !mark(1:3) #22c55e
   dob: O.Option<Date>;
   phoneNumber: O.Option<number>;
   profileImage: O.Option<string>;
@@ -140,7 +107,7 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Empty Constructor Setup
 
-Add a basic constructor structure that accepts data and value objects, setting up the foundation for incremental implementation.
+Our entity needs a way to be created from data. Let's set up a constructor that accepts the raw data and value objects, keeping it simple for now while we figure out the implementation.
 
 ```typescript !
 // !collapse(1:6) collapsed
@@ -155,10 +122,10 @@ import { Option as O } from "effect";
 // !collapse(1:7) collapsed
 // Collapsed IHost
 interface IHost extends IEntity {
-  readonly userId: UUID;
-  readonly dob: Date;  
-  readonly phoneNumber: number;
-  readonly profileImage: string;
+  userId: UUID;
+  dob: Date;  
+  phoneNumber: number;
+  profileImage: string;
 }
 
 export class Host extends BaseEntity implements IHost {
@@ -171,9 +138,9 @@ export class Host extends BaseEntity implements IHost {
   address: Address;
   socialLinks: SocialLinks;
   
-  // !mark(1:4) rgb(34, 197, 94)
+  // !mark(1:4) #22c55e
   constructor(data: unknown, address: Address, socialLinks: SocialLinks) {
-    // !callout[/super\(\)/] Always call parent constructor for BaseEntity
+    // !callout[/super\(\)/] #22c55e Always call parent constructor for BaseEntity
     super(); // Initialize BaseEntity
     // Constructor implementation will be added progressively
   }
@@ -184,7 +151,7 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Adding Computed Properties
 
-Add getter methods for computed properties while collapsing the main properties to focus on business logic encapsulation.
+Hosts often need to know if their profile is complete for business logic. Let's add a computed property that leverages our Option types to determine profile completeness.
 
 ```typescript !
 // !collapse(1:6) collapsed
@@ -198,10 +165,10 @@ import { Option as O } from "effect";
 // !collapse(1:7) collapsed
 // Collapsed IHost
 interface IHost extends IEntity {
-  readonly userId: UUID;
-  readonly dob: Date;  
-  readonly phoneNumber: number;
-  readonly profileImage: string;
+  userId: UUID;
+  dob: Date;  
+  phoneNumber: number;
+  profileImage: string;
 }
 
 export class Host extends BaseEntity implements IHost {
@@ -221,7 +188,7 @@ export class Host extends BaseEntity implements IHost {
     // Constructor implementation pending
   }
   
-  // !mark(1:5) rgb(34, 197, 94)
+  // !mark(1:5) #22c55e
   get hasCompleteProfile(): boolean {
     return O.isSome(this.dob) && 
            O.isSome(this.phoneNumber) && 
@@ -233,7 +200,7 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Creating SerializedHost Type
 
-Introduce the concept of serialized types for data transfer, establishing the contract between internal representation and external APIs.
+We need a way to represent our entity when it travels to and from external systems. Let's create a serialized type that handles the messy reality of different data formats.
 
 ```typescript !
 // !collapse(1:6) collapsed
@@ -247,21 +214,21 @@ import { Option as O } from "effect";
 // !collapse(1:7) collapsed
 // Collapsed IHost
 interface IHost extends IEntity {
-  readonly userId: UUID;
-  readonly dob: O.Option<Date>;
-  readonly phoneNumber: O.Option<number>;
-  readonly profileImage: O.Option<string>;
+  userId: UUID;
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
 }
 
-// !mark(1:14) rgb(34, 197, 94)
-type SerializedHost = { // !info[/SerializedHost/] Separate type for data transfer and persistence
+// !mark(1:14) #22c55e
+type SerializedHost = { // !info[/SerializedHost/] #22c55e Separate type for data transfer and persistence
   // Base entity fields
   id: string;
   createdAt: string;
   updatedAt: string;
   // Host-specific fields
   userId: string;
-  dob: Date | null | undefined; // !warning[/Date \| null \| undefined/] Union types for optional fields are verbose
+  dob: Date | null | undefined; // !warning[/Date \| null \| undefined/] #22c55e Union types for optional fields are verbose
   phoneNumber: number | null | undefined;
   profileImage: string | null | undefined;
   // Value objects (simplified for now)
@@ -300,7 +267,7 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Introducing Maybe&lt;T&gt; Utility Type
 
-Refactor the serialized type to use the flexible `Maybe<T>` utility that can handle multiple input formats for better API flexibility.
+That serialized type is getting complex with all those union types. Let's create a more flexible `Maybe<T>` type that can handle the various ways data might arrive.
 
 ```typescript !
 // !collapse(1:5) collapsed
@@ -311,9 +278,9 @@ import { Address } from "./address.vo";
 import { SocialLinks } from "./socialLinks.vo";
 import { Option as O } from "effect";
 
-// !mark(1:3) rgb(34, 197, 94)
+// !mark(1:2) #22c55e
 // Flexible type for serialization that accepts multiple input formats
-type Maybe<T> = T | O.Option<T> | null | undefined; // !callout[/Maybe<T>/] Flexible input handling for different data sources
+type Maybe<T> = T | O.Option<T> | null | undefined; // !callout[/Maybe<T>/] #22c55e Flexible input handling for different data sources
 
 // !collapse(1:7) collapsed
 // Collapsed IHost
@@ -324,27 +291,7 @@ interface IHost extends IEntity {
   readonly profileImage: O.Option<string>;
 }
 
-// !collapse(1:15) collapsed
-// Collapsed Host class implementation
-export class Host extends BaseEntity implements IHost {
-  userId: UUID;
-  dob: O.Option<Date>;
-  phoneNumber: O.Option<number>;
-  profileImage: O.Option<string>;
-  address: Address;
-  socialLinks: SocialLinks;
-  
-  constructor(data: unknown, address: Address, socialLinks: SocialLinks) {
-    super();
-    // Constructor implementation pending
-  }
-  
-  get hasCompleteProfile(): boolean {
-    return O.isSome(this.dob) && O.isSome(this.phoneNumber) && O.isSome(this.profileImage);
-  }
-}
-
-// !mark(1:12) rgb(234, 179, 8)
+// !mark(1:14) #eab308
 type SerializedHost = {
   // Base entity fields
   id: string;
@@ -352,21 +299,48 @@ type SerializedHost = {
   updatedAt: string;
   // Host-specific fields  
   userId: string;
-  dob: Maybe<Date>; // !info[/Maybe<Date>/] Accepts T | Option<T> | null | undefined
+  dob: Maybe<Date>; // !info[/Maybe<Date>/] #eab308 Accepts T | Option<T> | null | undefined
   phoneNumber: Maybe<number>;
   profileImage: Maybe<string>;
   // Value objects
   address: unknown;
   socialLinks: unknown;
 }
+
+export class Host extends BaseEntity implements IHost {
+  // !collapse(1:7) collapsed
+  // Collapsed class properties
+  userId: UUID;
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
+  address: Address;
+  socialLinks: SocialLinks;
+  
+  // Constructor from previous step
+  // !collapse(1:4) collapsed
+  constructor(data: unknown, address: Address, socialLinks: SocialLinks) {
+    super();
+    // Constructor implementation pending
+  }
+  
+  // !collapse(1:5) collapsed
+  get hasCompleteProfile(): boolean {
+    return O.isSome(this.dob) && 
+           O.isSome(this.phoneNumber) && 
+           O.isSome(this.profileImage);
+  }
+}
+
+
 ```
 
-## !!steps Implementing Constructor with Data Handling
+## !!steps Adding normalizeMaybe Utility
 
-Complete the constructor implementation using the serialized type with proper data validation and transformation using utility functions.
+We need a reliable way to convert our flexible `Maybe<T>` inputs into consistent `Option<T>` values. Let's build a utility function that handles all the edge cases.
 
 ```typescript !
-// !collapse(1:5) collapsed
+// !collapse(1:6) collapsed
 // Collapsed imports
 import { BaseEntity, IEntity } from "@domain/utils/base.entity";
 import { UUID } from "@domain/utils/refined.types";
@@ -374,9 +348,32 @@ import { Address } from "./address.vo";
 import { SocialLinks } from "./socialLinks.vo";
 import { Option as O } from "effect";
 
-// !collapse(1:3) collapsed
+// !collapse(1:2) collapsed
 // Collapsed Maybe type definition
 type Maybe<T> = T | O.Option<T> | null | undefined;
+
+// !mark(1:12) #22c55e
+/**
+ * Normalize Maybe<T> to Option<T> - use in entity constructors
+ */
+const normalizeMaybe = <T>(value: Maybe<T>): O.Option<T> => {
+  if (value === null || value === undefined) {
+    return O.none(); // !info[/O\.none\(\)/] #22c55e Returns empty Option for null/undefined
+  }
+  if (O.isOption(value)) { // !warning[/O\.isOption\(value\)/] #22c55e Type guard to check if value is already an Option
+    return value;
+  }
+  return O.some(value);
+};
+
+// !collapse(1:7) collapsed
+// Collapsed IHost
+interface IHost extends IEntity {
+  readonly userId: UUID;
+  readonly dob: O.Option<Date>;
+  readonly phoneNumber: O.Option<number>;
+  readonly profileImage: O.Option<string>;
+}
 
 // !collapse(1:12) collapsed
 // Collapsed SerializedHost type
@@ -392,17 +389,8 @@ type SerializedHost = {
   socialLinks: unknown;
 }
 
-// !collapse(1:7) collapsed
-// Collapsed IHost
-interface IHost extends IEntity {
-  readonly userId: UUID;
-  readonly dob: O.Option<Date>;
-  readonly phoneNumber: O.Option<number>;
-  readonly profileImage: O.Option<string>;
-}
-
 export class Host extends BaseEntity implements IHost {
-  // !collapse(1:6) collapsed
+  // !collapse(1:7) collapsed
   // Collapsed class properties
   userId: UUID;
   dob: O.Option<Date>;
@@ -411,100 +399,28 @@ export class Host extends BaseEntity implements IHost {
   address: Address;
   socialLinks: SocialLinks;
   
-  // !mark(1:14) rgb(34, 197, 94)
-  constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
-    super(); // !callout[/super\(\)/] Always call parent constructor for BaseEntity
-    // Initialize base entity fields from serialized data
-    this._fromSerialized({ // !info[/this\._fromSerialized/] BaseEntity method for common fields
-      id: data.id,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt
-    });
-    
-    // Transform and assign host-specific fields
-    this.userId = data.userId as UUID;
-    this.dob = normalizeMaybe(data.dob); // !callout[/normalizeMaybe/] Converts Maybe<T> to consistent Option<T>
-    this.phoneNumber = normalizeMaybe(data.phoneNumber);
-    this.profileImage = normalizeMaybe(data.profileImage);
-    this.address = address;
-    this.socialLinks = socialLinks;
-  }
-}
-```
-
-## !!steps Adding normalizeMaybe Utility
-
-Show the implementation of the `normalizeMaybe` utility function that handles the flexible Maybe&lt;T&gt; to Option&lt;T&gt; conversion safely.
-
-```typescript !
-// !collapse(1:5) collapsed
-// Collapsed imports
-import { BaseEntity, IEntity } from "@domain/utils/base.entity";
-import { UUID } from "@domain/utils/refined.types";
-import { Address } from "./address.vo";
-import { SocialLinks } from "./socialLinks.vo";
-import { Option as O } from "effect";
-
-// !collapse(1:3) collapsed
-// Collapsed Maybe type definition
-type Maybe<T> = T | O.Option<T> | null | undefined;
-
-// !mark(1:11) rgb(34, 197, 94)
-/**
- * Normalize Maybe<T> to Option<T> - use in entity constructors
- */
-const normalizeMaybe = <T>(value: Maybe<T>): O.Option<T> => {
-  if (value === null || value === undefined) {
-    return O.none(); // !info[/O\.none\(\)/] Returns empty Option for null/undefined
-  }
-  if (O.isOption(value)) { // !warning[/O\.isOption\(value\)/] Type guard to check if value is already an Option
-    return value;
-  }
-  return O.some(value); // !callout[/normalizeMaybe/] Handles any input format gracefully
-};
-
-// !collapse(1:25) collapsed
-// Collapsed previous definitions
-interface IHost extends IEntity {
-  readonly userId: UUID;
-  readonly dob: O.Option<Date>;
-  readonly phoneNumber: O.Option<number>;
-  readonly profileImage: O.Option<string>;
-}
-
-type SerializedHost = {
-  id: string; createdAt: string; updatedAt: string;
-  userId: string; dob: Maybe<Date>; phoneNumber: Maybe<number>;
-  profileImage: Maybe<string>; address: unknown; socialLinks: unknown;
-}
-
-export class Host extends BaseEntity implements IHost {
-  userId: UUID;
-  dob: O.Option<Date>;
-  phoneNumber: O.Option<number>;
-  profileImage: O.Option<string>;
-  address: Address;
-  socialLinks: SocialLinks;
-  
-  constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
+  // Constructor from previous step
+  // !collapse(1:4) collapsed
+  constructor(data: unknown, address: Address, socialLinks: SocialLinks) {
     super();
-    this._fromSerialized({id: data.id, createdAt: data.createdAt, updatedAt: data.updatedAt});
-    this.userId = data.userId as UUID;
-    this.dob = normalizeMaybe(data.dob);
-    this.phoneNumber = normalizeMaybe(data.phoneNumber);
-    this.profileImage = normalizeMaybe(data.profileImage);
-    this.address = address;
-    this.socialLinks = socialLinks;
+    // Constructor implementation pending
+  }
+  
+  // !collapse(1:5) collapsed
+  get hasCompleteProfile(): boolean {
+    return O.isSome(this.dob) && 
+           O.isSome(this.phoneNumber) && 
+           O.isSome(this.profileImage);
   }
 }
 ```
 
 ## !!steps Implementing Serialize Method  
 
-Add the serialize method to convert the entity back to serialized format for external APIs, demonstrating the round-trip data transformation.
+Now we need the reverse - converting our clean internal `Option<T>` types back to the messy external world. Let's add serialization that handles this transformation.
 
 ```typescript !
-// !collapse(1:5) collapsed
+// !collapse(1:6) collapsed
 // Collapsed imports
 import { BaseEntity, IEntity } from "@domain/utils/base.entity";
 import { UUID } from "@domain/utils/refined.types";
@@ -512,11 +428,11 @@ import { Address } from "./address.vo";
 import { SocialLinks } from "./socialLinks.vo";
 import { Option as O } from "effect";
 
-// !collapse(1:3) collapsed
+// !collapse(1:2) collapsed
 // Collapsed Maybe type definition
 type Maybe<T> = T | O.Option<T> | null | undefined;
 
-// !collapse(1:11) collapsed
+// !collapse(1:10) collapsed
 // Collapsed normalizeMaybe utility
 const normalizeMaybe = <T>(value: Maybe<T>): O.Option<T> => {
   if (value === null || value === undefined) {
@@ -528,16 +444,16 @@ const normalizeMaybe = <T>(value: Maybe<T>): O.Option<T> => {
   return O.some(value);
 };
 
-// !collapse(1:7) collapsed
-// Collapsed SerializedHost type
-type SerializedHost = {
-  id: string; createdAt: string; updatedAt: string;
-  userId: string; dob: Maybe<Date>; phoneNumber: Maybe<number>;
-  profileImage: Maybe<string>; address: unknown; socialLinks: unknown;
-}
+// !mark(1:6) #22c55e
+/**
+ * Convert an Option<T> value to Maybe<T> for serialization
+ */
+const optionToMaybe = <T>(option: O.Option<T>): Maybe<T> => {
+  return O.getOrNull(option) as Maybe<T>; // !info[/O\.getOrNull/] #22c55e Extracts value or returns null for external APIs
+}; // !callout[/optionToMaybe/] #22c55e Reverse transformation for serialization
 
 // !collapse(1:7) collapsed
-// Collapsed IHost
+// Collapsed IHost interface
 interface IHost extends IEntity {
   readonly userId: UUID;
   readonly dob: O.Option<Date>;
@@ -545,9 +461,23 @@ interface IHost extends IEntity {
   readonly profileImage: O.Option<string>;
 }
 
+// !collapse(1:12) collapsed
+// Collapsed SerializedHost type
+type SerializedHost = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  dob: Maybe<Date>;
+  phoneNumber: Maybe<number>;
+  profileImage: Maybe<string>;
+  address: unknown;
+  socialLinks: unknown;
+}
+
 export class Host extends BaseEntity implements IHost {
-  // !collapse(1:15) collapsed
-  // Collapsed class properties and constructor
+  // !collapse(1:7) collapsed
+  // Collapsed class properties
   userId: UUID;
   dob: O.Option<Date>;
   phoneNumber: O.Option<number>;
@@ -555,43 +485,48 @@ export class Host extends BaseEntity implements IHost {
   address: Address;
   socialLinks: SocialLinks;
   
-  constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
+  // Constructor from previous step
+  // !collapse(1:4) collapsed
+  constructor(data: unknown, address: Address, socialLinks: SocialLinks) {
     super();
-    this._fromSerialized({id: data.id, createdAt: data.createdAt, updatedAt: data.updatedAt});
-    this.userId = data.userId as UUID;
-    this.dob = normalizeMaybe(data.dob);
-    this.phoneNumber = normalizeMaybe(data.phoneNumber);
-    this.profileImage = normalizeMaybe(data.profileImage);
-    this.address = address; this.socialLinks = socialLinks;
+    // Constructor implementation pending
   }
   
-  // !mark(1:14) rgb(34, 197, 94)
+  // !mark(1:17) #22c55e
   /**
    * Convert entity back to serialized format for external APIs
    */
   serialize(): SerializedHost {
     return {
       // Serialize base entity properties
-      ...this._serialize(), // !info[/\.\.\.this\._serialize\(\)/] Includes base entity fields automatically
+      ...this._serialize(), // !info[/\.\.\.this\._serialize\(\)/] #22c55e Includes base entity fields automatically
       // Convert host-specific fields
       userId: this.userId,
-      dob: optionToMaybe(this.dob), // !callout[/optionToMaybe/] Converts Option<T> back to Maybe<T> for serialization
+      dob: optionToMaybe(this.dob), // !info[/optionToMaybe/] #22c55e Converts Option<T> back to Maybe<T> for serialization
       phoneNumber: optionToMaybe(this.phoneNumber),
       profileImage: optionToMaybe(this.profileImage),
       // Serialize value objects
-      address: this.address.serialize(), // !warning[/\.serialize\(\)/] Value objects must implement their own serialization
+      address: this.address.serialize(), // !warning[/\.serialize\(\)/] #22c55e Value objects must implement their own serialization
       socialLinks: this.socialLinks.serialize()
     };
+  }
+
+  // !collapse(1:6) collapsed
+  // Collapsed computed property
+  get hasCompleteProfile(): boolean {
+    return O.isSome(this.dob) && 
+           O.isSome(this.phoneNumber) && 
+           O.isSome(this.profileImage);
   }
 }
 ```
 
 ## !!steps Adding optionToMaybe Utility
 
-Show the companion utility for converting Options back to Maybe types for serialization, completing the round-trip transformation.
+That serialization logic needs its own utility function. Let's create the companion to normalizeMaybe that converts Options back to Maybe types for external APIs.
 
 ```typescript !
-// !collapse(1:5) collapsed
+// !collapse(1:6) collapsed
 // Collapsed imports
 import { BaseEntity, IEntity } from "@domain/utils/base.entity";
 import { UUID } from "@domain/utils/refined.types";
@@ -599,11 +534,11 @@ import { Address } from "./address.vo";
 import { SocialLinks } from "./socialLinks.vo";
 import { Option as O } from "effect";
 
-// !collapse(1:3) collapsed
+// !collapse(1:2) collapsed
 // Collapsed Maybe type definition
 type Maybe<T> = T | O.Option<T> | null | undefined;
 
-// !collapse(1:11) collapsed
+// !collapse(1:10) collapsed
 // Collapsed normalizeMaybe utility
 const normalizeMaybe = <T>(value: Maybe<T>): O.Option<T> => {
   if (value === null || value === undefined) {
@@ -615,22 +550,16 @@ const normalizeMaybe = <T>(value: Maybe<T>): O.Option<T> => {
   return O.some(value);
 };
 
-// !mark(1:5) rgb(34, 197, 94)
+// !mark(1:6) #22c55e
 /**
  * Convert an Option<T> value to Maybe<T> for serialization
  */
 const optionToMaybe = <T>(option: O.Option<T>): Maybe<T> => {
-  return O.getOrNull(option) as Maybe<T>; // !info[/O\.getOrNull/] Extracts value or returns null for external APIs
-}; // !callout[/optionToMaybe/] Reverse transformation for serialization
+  return O.getOrNull(option) as Maybe<T>; // !info[/O\.getOrNull/] #22c55e Extracts value or returns null for external APIs
+}; // !callout[/optionToMaybe/] #22c55e Reverse transformation for serialization
 
-// !collapse(1:30) collapsed
-// Collapsed previous definitions
-type SerializedHost = {
-  id: string; createdAt: string; updatedAt: string;
-  userId: string; dob: Maybe<Date>; phoneNumber: Maybe<number>;
-  profileImage: Maybe<string>; address: unknown; socialLinks: unknown;
-}
-
+// !collapse(1:7) collapsed
+// Collapsed IHost interface
 interface IHost extends IEntity {
   readonly userId: UUID;
   readonly dob: O.Option<Date>;
@@ -638,7 +567,23 @@ interface IHost extends IEntity {
   readonly profileImage: O.Option<string>;
 }
 
+// !collapse(1:12) collapsed
+// Collapsed SerializedHost type
+type SerializedHost = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  dob: Maybe<Date>;
+  phoneNumber: Maybe<number>;
+  profileImage: Maybe<string>;
+  address: unknown;
+  socialLinks: unknown;
+}
+
 export class Host extends BaseEntity implements IHost {
+  // !collapse(1:7) collapsed
+  // Collapsed class properties
   userId: UUID;
   dob: O.Option<Date>;
   phoneNumber: O.Option<number>;
@@ -646,16 +591,17 @@ export class Host extends BaseEntity implements IHost {
   address: Address;
   socialLinks: SocialLinks;
   
-  constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
+  // Constructor from previous step
+  // !collapse(1:4) collapsed
+  constructor(data: unknown, address: Address, socialLinks: SocialLinks) {
     super();
-    this._fromSerialized({id: data.id, createdAt: data.createdAt, updatedAt: data.updatedAt});
-    this.userId = data.userId as UUID;
-    this.dob = normalizeMaybe(data.dob);
-    this.phoneNumber = normalizeMaybe(data.phoneNumber);
-    this.profileImage = normalizeMaybe(data.profileImage);
-    this.address = address; this.socialLinks = socialLinks;
+    // Constructor implementation pending
   }
   
+  // !mark(1:17) #22c55e
+  /**
+   * Convert entity back to serialized format for external APIs
+   */
   serialize(): SerializedHost {
     return {
       ...this._serialize(),
@@ -667,23 +613,78 @@ export class Host extends BaseEntity implements IHost {
       socialLinks: this.socialLinks.serialize()
     };
   }
+
+  // !collapse(1:6) collapsed
+  // Collapsed computed property
+  get hasCompleteProfile(): boolean {
+    return O.isSome(this.dob) && 
+           O.isSome(this.phoneNumber) && 
+           O.isSome(this.profileImage);
+  }
 }
 ```
 
 ## !!steps Adding Basic Guards to Class
 
-Introduce validation guards directly in the class for data integrity and business rule enforcement.
+Our entity needs validation rules. Let's start with simple guards right in the class to ensure data integrity, then see how this can be improved.
 
 ```typescript !
-// !collapse(1:20) collapsed
+// !collapse(1:6) collapsed
+// Collapsed imports
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
+import { Option as O } from "effect";
+
+// !collapse(1:2) collapsed
+// Collapsed Maybe type definition
 type Maybe<T> = T | O.Option<T> | null | undefined;
+
+// !collapse(1:10) collapsed
+// Collapsed normalizeMaybe utility
+const normalizeMaybe = <T>(value: Maybe<T>): O.Option<T> => {
+  if (value === null || value === undefined) {
+    return O.none();
+  }
+  if (O.isOption(value)) {
+    return value;
+  }
+  return O.some(value);
+};
+
+// !collapse(1:5) collapsed
+// Collapsed optionToMaybe utility
+const optionToMaybe = <T>(option: O.Option<T>): Maybe<T> => {
+  return O.getOrNull(option) as Maybe<T>;
+};
+
+// !collapse(1:7) collapsed
+// Collapsed IHost interface
+interface IHost extends IEntity {
+  readonly userId: UUID;
+  readonly dob: O.Option<Date>;
+  readonly phoneNumber: O.Option<number>;
+  readonly profileImage: O.Option<string>;
+}
+
+// !collapse(1:12) collapsed
+// Collapsed SerializedHost type
 type SerializedHost = {
-  id: string; createdAt: string; updatedAt: string;
-  userId: string; dob: Maybe<Date>; phoneNumber: Maybe<number>;
-  profileImage: Maybe<string>; address: unknown; socialLinks: unknown;
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  dob: Maybe<Date>;
+  phoneNumber: Maybe<number>;
+  profileImage: Maybe<string>;
+  address: unknown;
+  socialLinks: unknown;
 }
 
 export class Host extends BaseEntity implements IHost {
+  // !collapse(1:7) collapsed
+  // Collapsed class properties
   userId: UUID;
   dob: O.Option<Date>;
   phoneNumber: O.Option<number>;
@@ -691,20 +692,163 @@ export class Host extends BaseEntity implements IHost {
   address: Address;
   socialLinks: SocialLinks;
   
+  // !collapse(1:15) collapsed
+  // Collapsed constructor
   constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
     super();
-    this._fromSerialized({id: data.id, createdAt: data.createdAt, updatedAt: data.updatedAt});
+    this._fromSerialized({
+      id: data.id,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt
+    });
     this.userId = data.userId as UUID;
     this.dob = normalizeMaybe(data.dob);
     this.phoneNumber = normalizeMaybe(data.phoneNumber);
     this.profileImage = normalizeMaybe(data.profileImage);
-    this.address = address; this.socialLinks = socialLinks;
+    this.address = address;
+    this.socialLinks = socialLinks;
   }
 
-  // !mark(1:12) rgb(34, 197, 94)
+  // !mark(1:13) #22c55e
   private static validatePhoneNumber(phone: O.Option<number>): boolean {
     return O.match(phone, {
       onNone: () => true, // Optional field, none is valid
+      onSome: (num) => num > 1000000000 && num < 9999999999
+    }); // !callout[/O\.match/] #22c55e Pattern matching on Option values
+  }
+  
+  private static validateDateOfBirth(dob: O.Option<Date>): boolean {
+    return O.match(dob, {
+      onNone: () => true, // !info[/onNone.*onSome/] #22c55e Handle both empty and present cases
+      onSome: (date) => date < new Date() && date > new Date('1900-01-01')
+    });
+  }
+
+  // !collapse(1:12) collapsed
+  // Collapsed serialize method
+  serialize(): SerializedHost {
+    return {
+      ...this._serialize(),
+      userId: this.userId,
+      dob: optionToMaybe(this.dob),
+      phoneNumber: optionToMaybe(this.phoneNumber),
+      profileImage: optionToMaybe(this.profileImage),
+      address: this.address.serialize(),
+      socialLinks: this.socialLinks.serialize()
+    };
+  }
+
+  // !collapse(1:6) collapsed
+  // Collapsed computed property
+  get hasCompleteProfile(): boolean {
+    return O.isSome(this.dob) && 
+           O.isSome(this.phoneNumber) && 
+           O.isSome(this.profileImage);
+  }
+}
+```
+
+## !!steps Using Guards in Constructor
+
+Those guards should actually be enforced when creating entities. Let's integrate them into the constructor, even though the error handling feels a bit clunky.
+
+```typescript !
+// !collapse(1:6) collapsed
+// Collapsed imports
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
+import { Option as O } from "effect";
+
+// !collapse(1:2) collapsed
+// Collapsed Maybe type definition
+type Maybe<T> = T | O.Option<T> | null | undefined;
+
+// !collapse(1:10) collapsed
+// Collapsed normalizeMaybe utility
+const normalizeMaybe = <T>(value: Maybe<T>): O.Option<T> => {
+  if (value === null || value === undefined) {
+    return O.none();
+  }
+  if (O.isOption(value)) {
+    return value;
+  }
+  return O.some(value);
+};
+
+// !collapse(1:5) collapsed
+// Collapsed optionToMaybe utility
+const optionToMaybe = <T>(option: O.Option<T>): Maybe<T> => {
+  return O.getOrNull(option) as Maybe<T>;
+};
+
+// !collapse(1:7) collapsed
+// Collapsed IHost interface
+interface IHost extends IEntity {
+  readonly userId: UUID;
+  readonly dob: O.Option<Date>;
+  readonly phoneNumber: O.Option<number>;
+  readonly profileImage: O.Option<string>;
+}
+
+// !collapse(1:12) collapsed
+// Collapsed SerializedHost type
+type SerializedHost = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  dob: Maybe<Date>;
+  phoneNumber: Maybe<number>;
+  profileImage: Maybe<string>;
+  address: unknown;
+  socialLinks: unknown;
+}
+
+export class Host extends BaseEntity implements IHost {
+  // !collapse(1:7) collapsed
+  // Collapsed class properties
+  userId: UUID;
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
+  address: Address;
+  socialLinks: SocialLinks;
+
+  
+  constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
+    super();
+    this._fromSerialized({
+      id: data.id,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt
+    });
+    // !mark(1:11) #22c55e
+    // Validate before assignment
+    const normalizedDob = normalizeMaybe(data.dob);
+    const normalizedPhone = normalizeMaybe(data.phoneNumber);
+    
+    if (!Host.validateDateOfBirth(normalizedDob)) {
+      throw new Error('Invalid date of birth'); // !warning[/throw new Error/] #22c55e Exception-based error handling to be improved
+    }
+    if (!Host.validatePhoneNumber(normalizedPhone)) {
+      throw new Error('Invalid phone number');
+    }
+    
+    this.userId = data.userId as UUID;
+    this.dob = normalizedDob;
+    this.phoneNumber = normalizedPhone;
+    this.profileImage = normalizeMaybe(data.profileImage);
+    this.address = address;
+    this.socialLinks = socialLinks;
+  }
+
+  // !collapse(1:12) collapsed
+  // Collapsed validation guards
+  private static validatePhoneNumber(phone: O.Option<number>): boolean {
+    return O.match(phone, {
+      onNone: () => true,
       onSome: (num) => num > 1000000000 && num < 9999999999
     });
   }
@@ -715,28 +859,103 @@ export class Host extends BaseEntity implements IHost {
       onSome: (date) => date < new Date() && date > new Date('1900-01-01')
     });
   }
-}
 
-// !callout[/O\.match/] Pattern matching on Option values
-// !info[/onNone.*onSome/] Handle both empty and present cases
+  // !collapse(1:15) collapsed
+  // Collapsed serialize method
+  serialize(): SerializedHost {
+    return {
+      ...this._serialize(),
+      userId: this.userId,
+      dob: optionToMaybe(this.dob),
+      phoneNumber: optionToMaybe(this.phoneNumber),
+      profileImage: optionToMaybe(this.profileImage),
+      address: this.address.serialize(),
+      socialLinks: this.socialLinks.serialize()
+    };
+  }
+
+  // !collapse(1:6) collapsed
+  // Collapsed computed property
+  get hasCompleteProfile(): boolean {
+    return O.isSome(this.dob) && 
+           O.isSome(this.phoneNumber) && 
+           O.isSome(this.profileImage);
+  }
+}
 ```
 
-## !!steps Using Guards in Constructor
+## !!steps Making Constructor Private with Factory Method
 
-Integrate the guards into the constructor for safe entity creation with validation.
+Direct instantiation bypasses our validation. Let's hide the constructor and force creation through a factory method that ensures proper validation.
 
 ```typescript !
-// !collapse(1:25) collapsed
+// !collapse(1:6) collapsed
+// Collapsed imports
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
+import { Option as O } from "effect";
+
+// !collapse(1:2) collapsed
+// Collapsed Maybe type definition
+type Maybe<T> = T | O.Option<T> | null | undefined;
+
+// !collapse(1:10) collapsed
+// Collapsed normalizeMaybe utility
+const normalizeMaybe = <T>(value: Maybe<T>): O.Option<T> => {
+  if (value === null || value === undefined) {
+    return O.none();
+  }
+  if (O.isOption(value)) {
+    return value;
+  }
+  return O.some(value);
+};
+
+// !collapse(1:5) collapsed
+// Collapsed optionToMaybe utility
+const optionToMaybe = <T>(option: O.Option<T>): Maybe<T> => {
+  return O.getOrNull(option) as Maybe<T>;
+};
+
+// !collapse(1:7) collapsed
+// Collapsed IHost interface
+interface IHost extends IEntity {
+  readonly userId: UUID;
+  readonly dob: O.Option<Date>;
+  readonly phoneNumber: O.Option<number>;
+  readonly profileImage: O.Option<string>;
+}
+
+// !collapse(1:12) collapsed
+// Collapsed SerializedHost type
+type SerializedHost = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  dob: Maybe<Date>;
+  phoneNumber: Maybe<number>;
+  profileImage: Maybe<string>;
+  address: unknown;
+  socialLinks: unknown;
+}
+
 export class Host extends BaseEntity implements IHost {
+  // !collapse(1:7) collapsed
+  // Collapsed class properties
   userId: UUID;
   dob: O.Option<Date>;
   phoneNumber: O.Option<number>;
   profileImage: O.Option<string>;
   address: Address;
   socialLinks: SocialLinks;
-
-  // !mark(1:16) rgb(34, 197, 94)
-  constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
+  
+  // !mark(1:1) #eab308
+  private constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
+    // !collapse(1:24) collapsed
+    // Collapsed constructor implementation with validation
     super();
     this._fromSerialized({
       id: data.id,
@@ -744,7 +963,6 @@ export class Host extends BaseEntity implements IHost {
       updatedAt: data.updatedAt
     });
     
-    // Validate before assignment
     const normalizedDob = normalizeMaybe(data.dob);
     const normalizedPhone = normalizeMaybe(data.phoneNumber);
     
@@ -761,83 +979,21 @@ export class Host extends BaseEntity implements IHost {
     this.profileImage = normalizeMaybe(data.profileImage);
     this.address = address;
     this.socialLinks = socialLinks;
-  }
-
-  // !collapse(1:12) collapsed
-  private static validatePhoneNumber(phone: O.Option<number>): boolean {
-    return O.match(phone, {
-      onNone: () => true,
-      onSome: (num) => num > 1000000000 && num < 9999999999
-    });
-  }
+  } // !warning[/private constructor/] #eab308 Prevents direct instantiation
   
-  private static validateDateOfBirth(dob: O.Option<Date>): boolean {
-    return O.match(dob, {
-      onNone: () => true,
-      onSome: (date) => date < new Date() && date > new Date('1900-01-01')
-    });
-  }
-}
-
-// !warning[/throw new Error/] Exception-based error handling to be improved
-// !info[/Validate before assignment/] Guards prevent invalid state
-```
-
-## !!steps Making Constructor Private with Factory Method
-
-Hide the constructor and provide a static factory method for controlled entity creation.
-
-```typescript !
-// !collapse(1:15) collapsed
-type SerializedHost = {
-  id: string; createdAt: string; updatedAt: string;
-  userId: string; dob: Maybe<Date>; phoneNumber: Maybe<number>;
-  profileImage: Maybe<string>; address: unknown; socialLinks: unknown;
-}
-
-export class Host extends BaseEntity implements IHost {
-  // !collapse(1:6) collapsed
-  userId: UUID;
-  dob: O.Option<Date>;
-  phoneNumber: O.Option<number>;
-  profileImage: O.Option<string>;
-  address: Address;
-  socialLinks: SocialLinks;
-  
-  // !mark(1:1) rgb(234, 179, 8)
-  private constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
-    // Previous constructor implementation with validation
-    super();
-    this._fromSerialized({id: data.id, createdAt: data.createdAt, updatedAt: data.updatedAt});
-    
-    const normalizedDob = normalizeMaybe(data.dob);
-    const normalizedPhone = normalizeMaybe(data.phoneNumber);
-    
-    if (!Host.validateDateOfBirth(normalizedDob)) {
-      throw new Error('Invalid date of birth');
-    }
-    if (!Host.validatePhoneNumber(normalizedPhone)) {
-      throw new Error('Invalid phone number');
-    }
-    
-    this.userId = data.userId as UUID;
-    this.dob = normalizedDob;
-    this.phoneNumber = normalizedPhone;
-    this.profileImage = normalizeMaybe(data.profileImage);
-    this.address = address; this.socialLinks = socialLinks;
-  }
-  
-  // !mark(1:8) rgb(34, 197, 94)
+  // !mark(1:8) #22c55e
+  // !info[/create/] #22c55e Controlled entity creation through factory method
   static create(serialized: SerializedHost): Host {
     // Create value objects first
     const address = Address.create(serialized.address);
     const socialLinks = SocialLinks.create(serialized.socialLinks);
     
     // Validate and create host
-    return new Host(serialized, address, socialLinks);
+    return new Host(serialized, address, socialLinks); 
   }
 
-  // !collapse(1:12) collapsed
+  // !collapse(1:14) collapsed
+  // Collapsed validation guards
   private static validatePhoneNumber(phone: O.Option<number>): boolean {
     return O.match(phone, {
       onNone: () => true,
@@ -851,18 +1007,37 @@ export class Host extends BaseEntity implements IHost {
       onSome: (date) => date < new Date() && date > new Date('1900-01-01')
     });
   }
-}
 
-// !warning[/private constructor/] Prevents direct instantiation
-// !callout[/static create/] Controlled entity creation through factory method
+  // !collapse(1:12) collapsed
+  // Collapsed serialize method
+  serialize(): SerializedHost {
+    return {
+      ...this._serialize(),
+      userId: this.userId,
+      dob: optionToMaybe(this.dob),
+      phoneNumber: optionToMaybe(this.phoneNumber),
+      profileImage: optionToMaybe(this.profileImage),
+      address: this.address.serialize(),
+      socialLinks: this.socialLinks.serialize()
+    };
+  }
+
+  // !collapse(1:6) collapsed
+  // Collapsed computed property
+  get hasCompleteProfile(): boolean {
+    return O.isSome(this.dob) && 
+           O.isSome(this.phoneNumber) && 
+           O.isSome(this.profileImage);
+  }
+}
 ```
 
 ## !!steps Moving Guards to Separate File
 
-Extract guards to a dedicated file for better organization and reusability across the domain.
+As our domain grows, these guards will be reused. Let's extract them to their own file for better organization and reusability.
 
 ```typescript !
-// !mark(1:18) rgb(34, 197, 94)
+// !mark(1:18) #22c55e
 // host.guards.ts
 import { Option as O } from "effect";
 
@@ -883,16 +1058,80 @@ export class HostGuards {
 } // !callout[/HostGuards/] Centralized validation logic for reusability across domain
 ```
 
-## !!steps Using External Guards in Factory Method
+## !!steps Extracting Utility Types to Separate File
 
-Update the factory method to use the external guards with custom error types.
+Our utility types and functions are also getting reused across entities. Let's move them to a shared utilities file to reduce duplication.
 
 ```typescript !
-// !collapse(1:15) collapsed
+// !mark(1:28) #22c55e
+// domain/utils/utils.ts
+import { Option as O } from "effect";
+
+// Flexible type for serialization that accepts multiple input formats
+export type Maybe<T> = T | O.Option<T> | null | undefined;
+/**
+ * Normalize Maybe<T> to Option<T> - use in entity constructors
+ */
+export const normalizeMaybe = <T>(value: Maybe<T>): O.Option<T> => {
+  if (value === null || value === undefined) {
+    return O.none();
+  }
+  if (O.isOption(value)) {
+    return value;
+  }
+  return O.some(value);
+};
+
+/**
+ * Convert an Option<T> value to Maybe<T> for serialization
+ */
+export const optionToMaybe = <T>(option: O.Option<T>): Maybe<T> => {
+  return O.getOrNull(option) as Maybe<T>;
+};
+```
+
+## !!steps Using External Guards in Factory Method
+
+Now let's update our factory method to use the external guards and introduce proper error types instead of generic Error instances.
+
+```typescript !
+// !collapse(1:8) collapsed
+// Collapsed imports
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
+import { Option as O } from "effect";
 import { HostGuards } from "./host.guards";
+import { Maybe, normalizeMaybe, optionToMaybe } from "@domain/utils/utils";
 import { HostValidationError } from "./host.error";
 
+// !collapse(1:7) collapsed
+// Collapsed IHost interface
+interface IHost extends IEntity {
+  readonly userId: UUID;
+  readonly dob: O.Option<Date>;
+  readonly phoneNumber: O.Option<number>;
+  readonly profileImage: O.Option<string>;
+}
+
+// !collapse(1:12) collapsed
+// Collapsed SerializedHost type
+type SerializedHost = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  dob: Maybe<Date>;
+  phoneNumber: Maybe<number>;
+  profileImage: Maybe<string>;
+  address: unknown;
+  socialLinks: unknown;
+}
+
 export class Host extends BaseEntity implements IHost {
+  // !collapse(1:7) collapsed
+  // Collapsed class properties
   userId: UUID;
   dob: O.Option<Date>;
   phoneNumber: O.Option<number>;
@@ -900,18 +1139,24 @@ export class Host extends BaseEntity implements IHost {
   address: Address;
   socialLinks: SocialLinks;
 
+  // !collapse(1:15) collapsed
+  // Collapsed constructor (simplified without validation - moved to factory)
   private constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
-    // Simplified constructor without validation (moved to factory)
     super();
-    this._fromSerialized({id: data.id, createdAt: data.createdAt, updatedAt: data.updatedAt});
+    this._fromSerialized({
+      id: data.id,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt
+    });
     this.userId = data.userId as UUID;
     this.dob = normalizeMaybe(data.dob);
     this.phoneNumber = normalizeMaybe(data.phoneNumber);
     this.profileImage = normalizeMaybe(data.profileImage);
-    this.address = address; this.socialLinks = socialLinks;
+    this.address = address;
+    this.socialLinks = socialLinks;
   }
 
-  // !mark(1:14) rgb(34, 197, 94)
+  // !mark(1:17) #eab308
   static create(serialized: SerializedHost): Host {
     const address = Address.create(serialized.address);
     const socialLinks = SocialLinks.create(serialized.socialLinks);
@@ -919,28 +1164,24 @@ export class Host extends BaseEntity implements IHost {
     // Use external guards with proper error handling
     const normalizedDob = normalizeMaybe(serialized.dob);
     const normalizedPhone = normalizeMaybe(serialized.phoneNumber);
-    
+    // !callout[/HostGuards\./] #eab308 External guard usage
     if (!HostGuards.validateDateOfBirth(normalizedDob)) {
-      throw new HostValidationError('Invalid date of birth');
+      throw new HostValidationError('Invalid date of birth'); 
     }
     if (!HostGuards.validatePhoneNumber(normalizedPhone)) {
-      throw new HostValidationError('Invalid phone number');
+      throw new HostValidationError('Invalid phone number'); // !warning[/HostValidationError/] #eab308 Custom error types for better error handling
     }
     
     return new Host(serialized, address, socialLinks);
   }
 }
-
-// !callout[/HostGuards\./] External guard usage
-// !warning[/HostValidationError/] Custom error types for better error handling
 ```
 
 ## !!steps The Problem with Manual Encoding/Decoding
 
-Highlight the complexity and repetition in current approach before introducing Effect Schema.
+At this point, we're seeing the pain of manual serialization everywhere. Let's examine what's wrong with our current approach before we fix it.
 
 ```typescript !
-// !warning(1:20) Current approach has several issues
 /*
 ❌ PROBLEMS WITH CURRENT APPROACH:
 
@@ -964,20 +1205,26 @@ serialize(): SerializedHost {
     // ... more manual mappings for each field
   };
 }
-
-// !info[/Manual conversion/] Every field requires explicit transformation
-// !warning[/Repetitive pattern/] Same pattern repeated for every entity
 ```
 
 ## !!steps Introducing Effect Schema
 
-Show a simple example of Effect Schema's power for automatic encoding/decoding.
+Here's a better way - Effect Schema can automatically handle types, validation, and transformations. Let's see a simple example of what's possible.
 
 ```typescript !
-// !mark(1:1) rgb(34, 197, 94)
+// !collapse(1:9) collapsed
+// Collapsed imports
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
+import { Option as O } from "effect";
+import { HostGuards } from "./host.guards";
+import { HostValidationError } from "./host.error";
+import { Maybe, normalizeMaybe, optionToMaybe } from "./host.utils";
 import { Schema as S } from "effect";
 
-// !mark(1:12) rgb(34, 197, 94)
+// !mark(1:6) #22c55e
 // Simple schema example
 const PersonSchema = S.Struct({
   name: S.String,
@@ -992,18 +1239,29 @@ type SerializedPerson = S.Schema.Encoded<typeof PersonSchema>; // Same structure
 // Automatic validation and transformation
 const validatePerson = S.decodeUnknown(PersonSchema); // !info[/S\.decodeUnknown/] Automatic validation and transformation
 
-// !warning[/Single source of truth/] Schema defines structure, types, and validation
+//To summarize, Schema defines structure, types, and validation.
 ```
 
 ## !!steps Creating Host Schema
 
-Define the Host schema that will replace manual type definitions and validation.
+Let's rebuild our Host using a schema-first approach. This single definition will replace our manual types and validation logic.
 
 ```typescript !
-// !mark(1:18) rgb(34, 197, 94)
+// !collapse(1:11) collapsed
+// Collapsed imports
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
+import { Option as O } from "effect";
+import { HostGuards } from "./host.guards";
+import { HostValidationError } from "./host.error";
+import { Maybe, normalizeMaybe, optionToMaybe } from "./host.utils";
+import { Schema as S } from "effect";
 import { StringToUUID, DateTimeFromAny } from "@domain/utils/refined.types";
 import { Optional } from "@domain/utils/validation.utils";
 
+// !mark(1:16) #22c55e
 const HostSchema = S.Struct({
   // Base entity fields
   id: StringToUUID,
@@ -1012,26 +1270,37 @@ const HostSchema = S.Struct({
   
   // Host-specific fields
   userId: StringToUUID,
-  dob: Optional(S.DateFromSelf),
+  dob: Optional(S.DateFromSelf), // !info[/Optional\(S\.DateFromSelf\)/] #22c55e Built-in optional field handling
   phoneNumber: Optional(S.Number),
   profileImage: Optional(S.String),
   
   // Value objects
-  address: AddressSchema,
+  address: AddressSchema, // !warning[/AddressSchema/] #22c55e Composition with value object schemas
   socialLinks: SocialLinksSchema
-});
-
-// !callout[/Single schema definition/] One source of truth for structure
-// !info[/Optional\(S\.DateFromSelf\)/] Built-in optional field handling
-// !warning[/AddressSchema/] Composition with value object schemas
+}); // !callout[/Single schema definition/] #22c55e One source of truth for structure
 ```
 
 ## !!steps Deriving Types from Schema
 
-Show how types are automatically derived from the schema, eliminating manual type definitions.
+The magic happens here - our schema automatically generates all the types we manually created. No more keeping types and implementations in sync.
 
 ```typescript !
-// !collapse(1:15) collapsed
+// !collapse(1:12) collapsed
+// Collapsed imports
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
+import { Option as O } from "effect";
+import { HostGuards } from "./host.guards";
+import { HostValidationError } from "./host.error";
+import { Maybe, normalizeMaybe, optionToMaybe } from "./host.utils";
+import { Schema as S } from "effect";
+import { StringToUUID, DateTimeFromAny } from "@domain/utils/refined.types";
+import { Optional } from "@domain/utils/validation.utils";
+
+// !collapse(1:12) collapsed
+// Collapsed HostSchema definition
 const HostSchema = S.Struct({
   id: StringToUUID,
   createdAt: DateTimeFromAny,
@@ -1044,69 +1313,98 @@ const HostSchema = S.Struct({
   socialLinks: SocialLinksSchema
 });
 
-// !mark(1:8) rgb(34, 197, 94)
+// !mark(1:6) #22c55e
 // Types automatically derived from schema
+export type HostType = S.Schema.Type<typeof HostSchema>; // !callout[/HostType/] #22c55e Runtime type with proper Option<T> handling
+// !info[/SerializedHost/] #22c55e Serialized type for external APIs
+export type SerializedHost = Omit<S.Schema.Encoded<typeof HostSchema>, "address" | "socialLinks"> & {
+  address: SerializedAddress; 
+  socialLinks: SerializedSocialLinks;
+};
+
+// No more manual type definitions needed! // !warning[/No more manual types/] #22c55e Eliminates manual type definitions
+```
+
+## !!steps Integrating Guards into Schema
+
+Our validation guards can become part of the schema definition itself. This moves validation from imperative code to declarative schema configuration.
+
+```typescript !
+// !collapse(1:12) collapsed
+// Collapsed imports
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
+import { Option as O } from "effect";
+import { HostGuards } from "./host.guards";
+import { HostValidationError } from "./host.error";
+import { Maybe, normalizeMaybe, optionToMaybe } from "./host.utils";
+import { Schema as S } from "effect";
+import { StringToUUID, DateTimeFromAny } from "@domain/utils/refined.types";
+import { Optional } from "@domain/utils/validation.utils";
+
+
+const HostSchema = S.Struct({
+  id: StringToUUID,
+  createdAt: DateTimeFromAny,
+  updatedAt: DateTimeFromAny,
+  userId: StringToUUID,
+  
+  // !mark(1:3) #22c55e
+  dob: Optional(S.DateFromSelf.pipe(HostGuards.ValidDateOfBirth)), // !callout[/\.pipe\(HostGuards\./] #22c55e Validation logic integrated into schema
+  phoneNumber: Optional(S.Number.pipe(HostGuards.ValidPhoneNumber)),
+  profileImage: Optional(S.String.pipe(HostGuards.ValidProfileImagePath)), // !info[/Declarative validation/] #22c55e Guards become part of schema definition
+  
+  address: AddressSchema,
+  socialLinks: SocialLinksSchema
+});
+```
+
+## !!steps Simplified Entity with Effect Schema
+
+With schema-derived types, our entity constructor becomes much simpler. No more manual conversions - everything is type-safe from the start.
+
+```typescript !
+// !collapse(1:12) collapsed
+// Collapsed imports
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
+import { Option as O } from "effect";
+import { HostGuards } from "./host.guards";
+import { HostValidationError } from "./host.error";
+import { Maybe, normalizeMaybe, optionToMaybe } from "./host.utils";
+import { Schema as S } from "effect";
+import { StringToUUID, DateTimeFromAny } from "@domain/utils/refined.types";
+import { Optional } from "@domain/utils/validation.utils";
+
+// !collapse(1:12) collapsed
+// Collapsed HostSchema definition
+export const HostSchema = S.Struct({
+  id: StringToUUID,
+  createdAt: DateTimeFromAny,
+  updatedAt: DateTimeFromAny,
+  userId: StringToUUID,
+  dob: Optional(S.DateFromSelf.pipe(HostGuards.ValidDateOfBirth)),
+  phoneNumber: Optional(S.Number.pipe(HostGuards.ValidPhoneNumber)),
+  profileImage: Optional(S.String.pipe(HostGuards.ValidProfileImagePath)),
+  address: AddressSchema,
+  socialLinks: SocialLinksSchema
+});
+
+// !collapse(1:6) collapsed
+// Collapsed type definitions
 export type HostType = S.Schema.Type<typeof HostSchema>;
 export type SerializedHost = Omit<S.Schema.Encoded<typeof HostSchema>, "address" | "socialLinks"> & {
   address: SerializedAddress;
   socialLinks: SerializedSocialLinks;
 };
 
-// No more manual type definitions needed!
-
-// !callout[/HostType/] Runtime type with proper Option<T> handling
-// !info[/SerializedHost/] Serialized type for external APIs
-// !warning[/No more manual types/] Eliminates manual type definitions
-```
-
-## !!steps Integrating Guards into Schema
-
-Show how simple validations can be moved directly into the schema as filters.
-
-```typescript !
-// !collapse(1:10) collapsed
-import { HostGuards } from "./host.guards";
-
-const HostSchema = S.Struct({
-  id: StringToUUID,
-  createdAt: DateTimeFromAny,
-  updatedAt: DateTimeFromAny,
-  userId: StringToUUID,
-  
-  // !mark(1:3) rgb(34, 197, 94)
-  dob: Optional(S.DateFromSelf.pipe(HostGuards.ValidDateOfBirth)),
-  phoneNumber: Optional(S.Number.pipe(HostGuards.ValidPhoneNumber)),
-  profileImage: Optional(S.String.pipe(HostGuards.ValidProfileImagePath)),
-  
-  address: AddressSchema,
-  socialLinks: SocialLinksSchema
-});
-
-// !callout[/\.pipe\(HostGuards\./] Validation logic integrated into schema
-// !info[/Declarative validation/] Guards become part of schema definition
-```
-
-## !!steps Simplified Entity with Effect Schema
-
-Show the final Host class that leverages Effect Schema for encoding/decoding.
-
-```typescript !
-// !collapse(1:15) collapsed
-export const HostSchema = S.Struct({
-  id: StringToUUID, createdAt: DateTimeFromAny, updatedAt: DateTimeFromAny,
-  userId: StringToUUID, dob: Optional(S.DateFromSelf.pipe(HostGuards.ValidDateOfBirth)),
-  phoneNumber: Optional(S.Number.pipe(HostGuards.ValidPhoneNumber)),
-  profileImage: Optional(S.String.pipe(HostGuards.ValidProfileImagePath)),
-  address: AddressSchema, socialLinks: SocialLinksSchema
-});
-
-export type HostType = S.Schema.Type<typeof HostSchema>;
-export type SerializedHost = Omit<S.Schema.Encoded<typeof HostSchema>, "address" | "socialLinks"> & {
-  address: SerializedAddress; socialLinks: SerializedSocialLinks;
-};
-
 export class Host extends BaseEntity implements IEntity {
-  // !collapse(1:6) collapsed
+  // !collapse(1:7) collapsed
+  // Collapsed class properties
   readonly userId: UUID;
   readonly dob: O.Option<Date>;
   readonly phoneNumber: O.Option<number>;
@@ -1114,7 +1412,7 @@ export class Host extends BaseEntity implements IEntity {
   readonly address: Address;
   readonly socialLinks: SocialLinks;
 
-  // !mark(1:18) rgb(34, 197, 94)
+  // !mark(1:16) #22c55e
   private constructor(data: HostType, address: Address, socialLinks: SocialLinks) {
     super();
     this._fromSerialized({
@@ -1124,27 +1422,60 @@ export class Host extends BaseEntity implements IEntity {
     });
     
     // Direct assignment - no manual conversion needed
-    this.userId = data.userId;
-    this.dob = data.dob;
+    this.userId = data.userId; // !callout[/HostType/] #22c55e Uses schema-derived types
+    this.dob = data.dob; // !info[/Direct assignment/] #22c55e No manual Option conversion needed
     this.phoneNumber = data.phoneNumber;
-    this.profileImage = data.profileImage;
+    this.profileImage = data.profileImage; // !warning[/readonly/] #22c55e Properties are now immutable
     this.address = address;
     this.socialLinks = socialLinks;
   }
 }
-
-// !callout[/HostType/] Uses schema-derived types
-// !info[/Direct assignment/] No manual Option conversion needed
-// !warning[/readonly/] Properties are now immutable
 ```
 
 ## !!steps Effect-Based Factory Method
 
-Show the new factory method that uses Effect for error handling instead of exceptions.
+Let's replace exception-based error handling with Effect's composable error handling. This gives us better control flow and type safety.
 
 ```typescript !
-// !collapse(1:10) collapsed
+// !collapse(1:12) collapsed
+// Collapsed imports
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
+import { Option as O } from "effect";
+import { HostGuards } from "./host.guards";
+import { HostValidationError } from "./host.error";
+import { Maybe, normalizeMaybe, optionToMaybe } from "./host.utils";
+import { Schema as S } from "effect";
+import { StringToUUID, DateTimeFromAny } from "@domain/utils/refined.types";
+import { Optional } from "@domain/utils/validation.utils";
+
+// !collapse(1:13) collapsed
+// Collapsed HostSchema definition
+export const HostSchema = S.Struct({
+  id: StringToUUID,
+  createdAt: DateTimeFromAny,
+  updatedAt: DateTimeFromAny,
+  userId: StringToUUID,
+  dob: Optional(S.DateFromSelf.pipe(HostGuards.ValidDateOfBirth)),
+  phoneNumber: Optional(S.Number.pipe(HostGuards.ValidPhoneNumber)),
+  profileImage: Optional(S.String.pipe(HostGuards.ValidProfileImagePath)),
+  address: AddressSchema,
+  socialLinks: SocialLinksSchema
+});
+
+// !collapse(1:5) collapsed
+// Collapsed type definitions
+export type HostType = S.Schema.Type<typeof HostSchema>;
+export type SerializedHost = Omit<S.Schema.Encoded<typeof HostSchema>, "address" | "socialLinks"> & {
+  address: SerializedAddress;
+  socialLinks: SerializedSocialLinks;
+};
+
 export class Host extends BaseEntity implements IEntity {
+  // !collapse(1:7) collapsed
+  // Collapsed class properties
   readonly userId: UUID;
   readonly dob: O.Option<Date>;
   readonly phoneNumber: O.Option<number>;
@@ -1152,23 +1483,133 @@ export class Host extends BaseEntity implements IEntity {
   readonly address: Address;
   readonly socialLinks: SocialLinks;
 
+  // !collapse(1:16) collapsed
+  // Collapsed constructor
   private constructor(data: HostType, address: Address, socialLinks: SocialLinks) {
-    // Constructor implementation from previous step
+    super();
+    this._fromSerialized({
+      id: data.id,
+      createdAt: data.createdAt, 
+      updatedAt: data.updatedAt
+    });
+    
+    this.userId = data.userId;
+    this.dob = data.dob;
+    this.phoneNumber = data.phoneNumber;
+    this.profileImage = data.profileImage;
+    this.address = address;
+    this.socialLinks = socialLinks;
   }
 
-  // !mark(1:22) rgb(34, 197, 94)
+  // !mark(1:26) #22c55e
   static create(input: SerializedHost): E.Effect<Host, HostError, never> {
     return pipe(
-      S.decodeUnknown(HostSchema)(input),
+      S.decodeUnknown(HostSchema)(input), // !callout[/E\.Effect/] #22c55e Effect-based error handling
       E.flatMap((data) => {
         // Domain validation
         return HostGuards.validateHostDomain({
           userId: data.userId,
           phoneNumber: data.phoneNumber,
           profileImage: data.profileImage
-        }).pipe(
+        }).pipe( // !info[/pipe/] #22c55e Composable validation pipeline
           E.flatMap(() => {
             // Create value objects
+            return E.all([
+              Address.create(input.address), 
+              SocialLinks.create(input.socialLinks)
+            ]).pipe(
+              E.map(([address, socialLinks]) => 
+                new Host(data, address, socialLinks))
+            );
+          })
+        );
+      }),
+      E.mapError((error) => new HostValidationError("entity", input, error.message)) // !warning[/No exceptions/] #22c55e Functional error handling without try/catch
+    );
+  }
+}
+```
+
+## !!steps Simplified Serialization
+
+The final payoff - serialization becomes a single function call. No more manual field mapping required.
+
+```typescript !
+// !collapse(1:12) collapsed
+// Collapsed imports
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
+import { Option as O } from "effect";
+import { HostGuards } from "./host.guards";
+import { HostValidationError } from "./host.error";
+import { Maybe, normalizeMaybe, optionToMaybe } from "./host.utils";
+import { Schema as S } from "effect";
+import { StringToUUID, DateTimeFromAny } from "@domain/utils/refined.types";
+import { Optional } from "@domain/utils/validation.utils";
+
+// !collapse(1:13) collapsed
+// Collapsed HostSchema definition
+export const HostSchema = S.Struct({
+  id: StringToUUID,
+  createdAt: DateTimeFromAny,
+  updatedAt: DateTimeFromAny,
+  userId: StringToUUID,
+  dob: Optional(S.DateFromSelf.pipe(HostGuards.ValidDateOfBirth)),
+  phoneNumber: Optional(S.Number.pipe(HostGuards.ValidPhoneNumber)),
+  profileImage: Optional(S.String.pipe(HostGuards.ValidProfileImagePath)),
+  address: AddressSchema,
+  socialLinks: SocialLinksSchema
+});
+
+// !collapse(1:5) collapsed
+// Collapsed type definitions
+export type HostType = S.Schema.Type<typeof HostSchema>;
+export type SerializedHost = Omit<S.Schema.Encoded<typeof HostSchema>, "address" | "socialLinks"> & {
+  address: SerializedAddress;
+  socialLinks: SerializedSocialLinks;
+};
+
+export class Host extends BaseEntity implements IEntity {
+  // !collapse(1:7) collapsed
+  // Collapsed class properties
+  readonly userId: UUID;
+  readonly dob: O.Option<Date>;
+  readonly phoneNumber: O.Option<number>;
+  readonly profileImage: O.Option<string>;
+  readonly address: Address;
+  readonly socialLinks: SocialLinks;
+
+  // !mark(1:16) collapsed
+  // Collapsed constructor
+  private constructor(data: HostType, address: Address, socialLinks: SocialLinks) {
+    super();
+    this._fromSerialized({
+      id: data.id,
+      createdAt: data.createdAt, 
+      updatedAt: data.updatedAt
+    });
+    
+    this.userId = data.userId;
+    this.dob = data.dob;
+    this.phoneNumber = data.phoneNumber;
+    this.profileImage = data.profileImage;
+    this.address = address;
+    this.socialLinks = socialLinks;
+  }
+
+  // !mark(1:26) #22c55e
+  static create(input: SerializedHost): E.Effect<Host, HostError, never> {
+    return pipe(
+      S.decodeUnknown(HostSchema)(input),
+      E.flatMap((data) => {
+        return HostGuards.validateHostDomain({
+          userId: data.userId,
+          phoneNumber: data.phoneNumber,
+          profileImage: data.profileImage
+        }).pipe(
+          E.flatMap(() => {
             return E.all([
               Address.create(input.address), 
               SocialLinks.create(input.socialLinks)
@@ -1182,41 +1623,13 @@ export class Host extends BaseEntity implements IEntity {
       E.mapError((error) => new HostValidationError("entity", input, error.message))
     );
   }
-}
 
-// !callout[/E\.Effect/] Effect-based error handling
-// !info[/pipe/] Composable validation pipeline
-// !warning[/No exceptions/] Functional error handling without try/catch
-```
-
-## !!steps Simplified Serialization
-
-Show how serialization becomes trivial with Effect Schema.
-
-```typescript !
-// !collapse(1:25) collapsed
-export class Host extends BaseEntity implements IEntity {
-  readonly userId: UUID;
-  readonly dob: O.Option<Date>;
-  readonly phoneNumber: O.Option<number>;
-  readonly profileImage: O.Option<string>;
-  readonly address: Address;
-  readonly socialLinks: SocialLinks;
-
-  private constructor(data: HostType, address: Address, socialLinks: SocialLinks) {
-    // Previous implementation
-  }
-
-  static create(input: SerializedHost): E.Effect<Host, HostError, never> {
-    // Previous implementation
-  }
-
-  // !mark(1:3) rgb(34, 197, 94)
+  // !mark(1:3) #22c55e
   serialized(): E.Effect<SerializedHost, ParseResult.ParseError, never> {
-    return S.encode(HostSchema)(this);
-  }
+    return S.encode(HostSchema)(this); // !callout[/S\.encode/] #22c55e Automatic serialization with type safety
+  } // !info[/One-line serialization/] #22c55e No manual field mapping required
 
-  // !mark(1:8) rgb(34, 197, 94)
+  // !mark(1:12) #22c55e
   updateProfile(updates: SerializedHostUpdate): E.Effect<Host, HostError, never> {
     return this.serialized().pipe(
       E.flatMap((currentSerialized) => {
@@ -1225,23 +1638,88 @@ export class Host extends BaseEntity implements IEntity {
           ...updates,
           updatedAt: new Date()
         };
-        return Host.create(updatedData);
+        return Host.create(updatedData); // !warning[/updateProfile/] #22c55e Immutable updates through recreation
       })
     );
   }
 }
-
-// !callout[/S\.encode/] Automatic serialization with validation
-// !info[/One-line serialization/] No manual field mapping required
-// !warning[/updateProfile/] Immutable updates through recreation
 ```
 
 </ScrollyCoding>
 
-## Utilities Overview
+## Code Organization
 
-### Base Entity (`base.entity.ts`)
-Contains the `SimpleSerialized<T>` type utility for entity serialization.
+The domain layer is organized by business entities and utilities, following domain-driven design principles:
 
-### Refined Types (`refined.types.ts`)
-Provides `Maybe<T>`, `normalizeMaybe`, and `optionToMaybe` utilities for handling optional values safely.
+<Files>
+  <Folder name="domain" defaultOpen>    
+    <Folder name="user" defaultOpen icon={<User />}>
+      <File name="user.entity.ts" icon={<BiLogoTypescript />} />
+      <File name="user.guards.ts" icon={<BiLogoTypescript />} />
+      <File name="user.error.ts" icon={<BiLogoTypescript />} />
+      <File name="host.entity.ts" icon={<BiLogoTypescript />} />
+      <File name="address.vo.ts" icon={<BiLogoTypescript />} />
+    </Folder>
+    <Folder name="game" icon={<Gamepad />}>
+      <File name="game.entity.ts" icon={<BiLogoTypescript />} />
+      <File name="game.guards.ts" icon={<BiLogoTypescript />} />
+      <File name="game.error.ts" icon={<BiLogoTypescript />} />
+    </Folder>
+    <Folder name="utils" defaultOpen icon={<Tools />}>
+      <File name="base.entity.ts" icon={<BiLogoTypescript />} />
+      <File name="base.repository.ts" icon={<BiLogoTypescript />} />
+      <File name="base.errors.ts" icon={<BiLogoTypescript />} />
+      <File name="refined.types.ts" icon={<BiLogoTypescript />} />
+      <File name="validation.utils.ts" icon={<BiLogoTypescript />} />
+      <File name="pagination.ts" icon={<BiLogoTypescript />} />
+      <File name="index.ts" icon={<BiLogoTypescript />} />
+    </Folder>
+    <Folder name="refined" icon={<Filter />}>
+      <File name="[custom-refined-type].ts" icon={<BiLogoTypescript />} />
+      <File name="index.ts" icon={<BiLogoTypescript />} />
+    </Folder>
+  </Folder>
+</Files>
+
+## Core Utilities Explained
+
+### 1. Base Entity (base.entity.ts)
+Provides foundational entity functionality with Effect support:
+- `BaseEntity class`: Abstract base with id, createdAt, updatedAt
+- `IEntity interface`: Core entity contract
+- `SerializedEntity`: Type for persistence layer
+- `_fromSerialized()`: Safe entity reconstruction from data
+- `_serialize()`: Convert entity to plain object
+
+### 2. Refined Types (refined.types.ts)
+Branded types with Effect Schema integration:
+- `UUID`: Branded UUID type with validation
+- `DateTime`: Branded DateTime with coercion
+- `Email`: Validated email addresses
+- `StringToUUID`: Effect Schema transformer for UUID
+- `DateTimeFromAny`: Union transformer for multiple date formats
+- `Optional()`: Helper for optional fields with null handling
+
+### 3. Validation Utils (validation.utils.ts)
+Reusable validation building blocks:
+- `createNotEmptyFilter()`: Factory for non-empty string validation
+- `Optional()`: Wrapper for nullable schema fields
+
+### 4. Base Repository (base.repository.ts)
+Abstract repository pattern with Effect:
+- `BaseRepository<T>`: Generic repository base class
+- `RepositoryEffect<T, E>`: Type alias for Effect-based operations
+- `Common CRUD operations`: insert, update, fetchById, etc.
+
+### 5. Base Errors (base.errors.ts)
+Domain error hierarchy:
+- `DomainError`: Base error class
+- `ValidationError`: For validation failures
+- `NotFoundError`: For missing entities
+- `AlreadyExistsError`: For duplicate entities
+
+### 6. Pagination (pagination.ts)
+Effect-based pagination utilities:
+- `PaginationOptions`: Validated pagination parameters
+- `Paginated<T>`: Interface for paginated results
+- `Paginator`: Utility for paginating collections

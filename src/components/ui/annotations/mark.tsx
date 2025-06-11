@@ -51,8 +51,9 @@ export const mark: AnnotationHandler = {
           borderLeft: "solid 2px transparent",
           borderLeftColor: annotation && color,
           backgroundColor: annotation && `color-mix(in srgb, ${color} 10%, transparent)`,
-        }}
-        className={`px-2 -mx-2 ${marginClasses}`}
+          '--mark-color': annotation && color,
+        } as React.CSSProperties}
+        className={`px-2 -mx-2 ${marginClasses} ch-mark-container`}
       >
         <InnerLine merge={props} />
       </div>
