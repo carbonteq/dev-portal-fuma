@@ -27,7 +27,7 @@ export const collapsable: AnnotationHandler = {
     },
     Block: ({ annotation, children }) => {
         return (
-            <Collapsible defaultOpen={annotation.query !== "collapsed"}>
+            <Collapsible defaultOpen={annotation.query !== "collapsed"} className="pt-1 data-[state=closed]:bg-[var(--ch-17)] data-[state=closed]:-mx-2 data-[state=closed]:pl-2">
                 {children}
             </Collapsible>
         )
@@ -44,14 +44,14 @@ export const collapseTrigger: AnnotationHandler = {
     name: "CollapseTrigger",
     onlyIfAnnotated: true,
     AnnotatedLine: ({ annotation, ...props }) => (
-        <CollapsibleTrigger className="group contents">
+        <CollapsibleTrigger className="group contents ">
             <InnerLine merge={props} data={{ icon }} />
         </CollapsibleTrigger>
     ),
     Line: (props) => {
         const icon = props.data?.icon as React.ReactNode
         return (
-            <div className="table-row">
+            <div className="table-row w-full">
                 <span className="absolute left-[3px] w-2 text-center table-cell">{icon}</span>
                 <div className="table-cell text-left">
                     <InnerLine merge={props} />

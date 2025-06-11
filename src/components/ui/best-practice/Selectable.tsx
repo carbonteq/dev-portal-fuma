@@ -14,7 +14,7 @@ export function Selectable({ type, children, className = '' }: SelectableProps) 
   const { selected, setSelected, layoutId } = useSelection();
   const isSelected = selected === type;
   
-  const baseStyles = "relative p-6 cursor-pointer transition-colors dark";
+  const baseStyles = "relative p-6 cursor-pointer transition-colors dark mt-1 mx-1";
   const typeStyles = type === 'dont' 
     ? `border-r border-gray-200`
     : ``;
@@ -35,7 +35,7 @@ export function Selectable({ type, children, className = '' }: SelectableProps) 
       {isSelected && (
         <motion.div
           layoutId={layoutId}
-          className="absolute inset-0 bg-black"
+          className={`absolute inset-0 bg-[#0D0D0D] ${type === 'dont' ? 'rounded-tl-lg' : 'rounded-tr-lg'}`}
           transition={{
             type: "spring",
             stiffness: 200,

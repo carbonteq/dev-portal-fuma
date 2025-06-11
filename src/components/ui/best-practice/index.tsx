@@ -41,7 +41,7 @@ export async function BestPractice(props: unknown) {
         <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-200">
           {/* Don't Practice Column */}
           {dontExample && (
-            <Selectable type="dont">
+            <Selectable type="dont" className={'rounded-tl-lg'}>
               <Header type="dont" />
               <div className="prose prose-sm max-w-none">
                 {dontExample.children}
@@ -51,7 +51,7 @@ export async function BestPractice(props: unknown) {
 
           {/* Do Practice Column */}
           {doExample && (
-            <Selectable type="do" className={!dontExample ? 'border-r-0' : ''}>
+            <Selectable type="do" className={'rounded-tr-lg'}>
               <Header type="do" />
               <div className="prose prose-sm max-w-none">
                 {doExample.children}

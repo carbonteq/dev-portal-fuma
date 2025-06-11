@@ -75,13 +75,13 @@
   --ch-callout-bg: hsl(220, 13%, 12%);
   --ch-callout-border: hsl(220, 13%, 25%);
   --ch-callout-text: hsl(220, 14%, 83%);
-  --ch-warning-bg: hsl(45, 100%, 12%);
+  --ch-warning-bg: hsl(220, 13%, 12%);
   --ch-warning-border: hsl(32, 100%, 65%);
   --ch-warning-text: hsl(220, 14%, 83%);
-  --ch-error-bg: hsl(0, 100%, 12%);
+  --ch-error-bg: hsl(220, 13%, 12%);
   --ch-error-border: hsl(350, 100%, 72%);
   --ch-error-text: hsl(220, 14%, 83%);
-  --ch-info-bg: hsl(210, 100%, 15%);
+  --ch-info-bg: hsl(220, 13%, 12%);
   --ch-info-border: hsl(210, 100%, 70%);
   --ch-info-text: hsl(220, 14%, 83%);
 }
@@ -98,5 +98,16 @@ pre[data-theme] {
 pre code {
   background-color: var(--ch-16);
   color: var(--ch-4);
+}
+
+/* Mark and Callout Combination Styles */
+/* Mark containers automatically style their child callout containers */
+.ch-mark-container .ch-callout-container {
+  background-color: inherit;
+  border-left: inherit;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  margin-left: -0.5rem;
+  margin-right: -0.5rem;
 }
 
