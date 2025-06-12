@@ -1,5 +1,6 @@
 {
   "title": "Learning Resources",
+  "icon": "lucide:Lightbulb",
   "defaultOpen": true,
   "pages": [
     "frontend"

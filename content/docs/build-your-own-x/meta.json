@@ -1,5 +1,6 @@
 {
   "title": "Build Your Own X",
+  "icon": "lucide:Hammer",
   "defaultOpen": true,
   "pages": [
     "backend",

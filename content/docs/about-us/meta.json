@@ -1,5 +1,6 @@
 {
   "title": "About Us",
+  "icon": "lucide:EqualApproximately",
   "defaultOpen": true,
   "pages": [
     "why-we-exist",
@@ -7,4 +8,4 @@
     "howwecritique",
     "workingaggrement"
   ]
-} 
+}

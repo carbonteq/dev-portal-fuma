@@ -1,5 +1,6 @@
 {
   "title": "Best Practices",
+  "icon": "lucide:BadgeCheck",
   "defaultOpen": true,
   "pages": [
     "overview",

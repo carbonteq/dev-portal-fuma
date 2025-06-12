@@ -1,5 +1,6 @@
 {
   "title": "Training",
+  "icon": "lucide:GraduationCap",
   "defaultOpen": true,
   "pages": [
     "backend-typescript",

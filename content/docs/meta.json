@@ -1,5 +1,6 @@
 {
   "title": "Documentation",
+  "icon": "lucide:Book",
   "pages": [
     "index",
     "about-us",

@@ -42,6 +42,10 @@
   [data-state] > button {
     color: var(--color-fd-secondary-foreground);
     font-weight: 600;
+    & svg {
+      color: var(--color-fd-secondary-foreground);
+      margin-bottom: 3px;
+    }
   }
 
   /* Best Practice Component Dark Theme Handling */
