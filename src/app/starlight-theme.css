@@ -41,6 +41,8 @@
 
   [data-state] > button {
     color: var(--color-fd-secondary-foreground);
+    font-size: .90rem;
+    letter-spacing: 0.02em;
     font-weight: 600;
     & svg {
       color: var(--color-fd-secondary-foreground);
