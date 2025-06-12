@@ -2,9 +2,10 @@
   "title": "Frontend",
   "defaultOpen": true,
   "pages": [
-    "best_practices",
+    "overview",
     "principles",
     "architecture", 
-    "stack_tooling"
+    "stack_tooling",
+    "..."
   ]
 } 

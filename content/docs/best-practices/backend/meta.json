@@ -2,10 +2,11 @@
   "title": "Backend",
   "defaultOpen": true,
   "pages": [
-    "architecture",
-    "best_practices",
-    "branded-types",
+    "overview",
     "principles", 
-    "stack_tooling"
+    "branded-types",
+    "architecture",
+    "stack_tooling",
+    "..."
   ]
 } 

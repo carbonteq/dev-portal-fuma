@@ -1,0 +1,11 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "about-us",
+    "best-practices",
+    "training", 
+    "build-your-own-x",
+    "learning-resources"
+  ]
+} 

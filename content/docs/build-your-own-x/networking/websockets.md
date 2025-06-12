@@ -2,7 +2,7 @@
 title: Websocket Client/Server
 ---
 
-> ### With Json as Sub-Protocol
+### With Json as Sub-Protocol
 
 ### So what are WebSockets anyway?
 
@@ -30,7 +30,7 @@ The very first token in the request is the HTTP method, which tells the server t
 
 A barebones example of a request header, formatted according to the HTTP RFC, looks like this:
 
-```plaintext
+```http
 GET /index.html HTTP/1.1
 Host: www.example.com
 
@@ -40,7 +40,7 @@ Having received the request header, the server then formats a response header st
 
 The “Status-Line” tells the client the HTTP status code (usually 200 if there were no problems) and provides a brief “reason” text description explaining the status code. Key-value header pairs appear next, followed by the actual data that was requested (unless the status code indicated that the request was unable to be fulfilled for some reason).
 
-```plaintext
+```http
 HTTP/1.1 200 OK
 Date: Wed, 1 Aug 2018 16:03:29 GMT
 Content-Length: 291
@@ -55,7 +55,7 @@ Meanwhile, it’s worth remembering that piggybacking on HTTP makes using TLS to
 
 So what’s this got to do with WebSockets, you might ask? Let me explain...
 
-### [](https://ably.com/topic/websockets#ditching-http-web-sockets-and-re-purposed-tcp-sockets)Ditching HTTP: WebSockets and re-purposed TCP sockets
+### Ditching HTTP: WebSockets and re-purposed TCP sockets
 
 When making an HTTP request and receiving a response, the actual two-way network communication involved takes place over an active TCP/IP connection.
 
@@ -63,7 +63,7 @@ As we now know, WebSockets are built on top of the TCP stack as well, which mean
 
 To begin the process of re-purposing the TCP connection for WebSocket communication, the client can include a set of standard HTTP request headers that were invented specifically for this kind of use case:
 
-```plaintext
+```http
 GET /index.html HTTP/1.1
 Host: www.example.com
 Connection: Upgrade

@@ -16,6 +16,15 @@ body {
   font-family: var(--font-vactory) !important;
 }
 
+.prose {
+  letter-spacing: 0.01em;
+}
+.prose :where(strong):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  color: var(--tw-prose-bold);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
 /* Article background pattern */
 article {
   background-size: 14px 14px;

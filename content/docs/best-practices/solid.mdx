@@ -1,0 +1,361 @@
+---
+title: SOLID Principles
+---
+
+## Single Responsibility Principle
+
+<BestPractice title="Single Responsibility Principle (SRP)">
+
+As stated in Clean Code, "There should never be more than one reason for a class to change". A class should have one responsibility and one reason to change.
+
+## !dont multiple-responsibilities
+
+**Pack multiple functionalities into one class.** This creates:
+- Poor conceptual cohesion
+- Multiple reasons for the class to change
+- Difficult to understand dependencies
+- Hard to modify without affecting other parts
+
+```ts !example
+class UserSettings {
+  constructor(private readonly user: User) {}
+
+  changeSettings(settings: UserSettings) {
+    if (this.verifyCredentials()) {
+      // Update settings logic
+    }
+  }
+
+  verifyCredentials() {
+    // Authentication logic
+  }
+}
+```
+
+## !do single-responsibility
+
+**Separate concerns into focused classes.** This provides:
+- **Clear single responsibility** for each class
+- **Easier maintenance** and testing
+- **Better code organization** and reusability
+- **Reduced coupling** between components
+
+```ts !example
+class UserAuth {
+  verifyCredentials(user: User) {
+    // Authentication logic
+  }
+}
+
+class UserSettings {
+  constructor(private readonly auth: UserAuth) {}
+
+  changeSettings(user: User, settings: UserSettings) {
+    if (this.auth.verifyCredentials(user)) {
+      // Update settings logic
+    }
+  }
+}
+```
+
+</BestPractice>
+
+## Open/Closed Principle
+
+<BestPractice title="Open/Closed Principle (OCP)">
+
+Software entities should be open for extension, but closed for modification. You should allow users to add new functionalities without changing existing code.
+
+## !dont modification-required
+
+**Modify existing code to add new functionality.** This approach:
+- Violates the open/closed principle
+- Requires changing tested code
+- Increases risk of introducing bugs
+- Creates tight coupling between components
+
+```ts !example
+class HttpRequester {
+  constructor(private readonly adapter: Adapter) {}
+
+  async fetch<T>(url: string): Promise<T> {
+    if (this.adapter instanceof AjaxAdapter) {
+      return await makeAjaxCall<T>(url);
+    } else if (this.adapter instanceof NodeAdapter) {
+      return await makeHttpCall<T>(url);
+    }
+    // Need to modify this class for each new adapter type
+  }
+}
+```
+
+## !do extension-pattern
+
+**Use abstraction to enable extension without modification.** This provides:
+- **Open for extension** through inheritance
+- **Closed for modification** of existing code
+- **Consistent interface** for all implementations
+- **Easy addition** of new functionality
+
+```ts !example
+abstract class Adapter {
+  abstract async request<T>(url: string): Promise<T>;
+}
+
+class AjaxAdapter extends Adapter {
+  async request<T>(url: string): Promise<T> {
+    return await makeAjaxCall<T>(url);
+  }
+}
+
+class NodeAdapter extends Adapter {
+  async request<T>(url: string): Promise<T> {
+    return await makeHttpCall<T>(url);
+  }
+}
+
+class HttpRequester {
+  constructor(private readonly adapter: Adapter) {}
+
+  async fetch<T>(url: string): Promise<T> {
+    return await this.adapter.request<T>(url);
+    // No modification needed for new adapter types
+  }
+}
+```
+
+</BestPractice>
+
+## Liskov Substitution Principle
+
+<BestPractice title="Liskov Substitution Principle (LSP)">
+
+Objects of a superclass should be replaceable with objects of its subclasses without breaking functionality. Subclasses should honor the contract of their parent class.
+
+## !dont contract-violation
+
+**Create subclasses that violate parent class contracts.** This causes:
+- Unexpected behavior when substituting objects
+- Breaking the "is-a" relationship assumption
+- Runtime errors and incorrect results
+- Violation of polymorphism principles
+
+```ts !example
+class Rectangle {
+  constructor(protected width = 0, protected height = 0) {}
+
+  setWidth(width: number): this {
+    this.width = width;
+    return this;
+  }
+
+  setHeight(height: number): this {
+    this.height = height;
+    return this;
+  }
+
+  getArea(): number {
+    return this.width * this.height;
+  }
+}
+
+class Square extends Rectangle {
+  setWidth(width: number): this {
+    this.width = this.height = width; // Violates LSP
+    return this;
+  }
+
+  setHeight(height: number): this {
+    this.width = this.height = height; // Violates LSP
+    return this;
+  }
+}
+
+// BAD: Square returns 25, Rectangle returns 20
+const shapes = [new Rectangle(), new Square()];
+shapes.forEach(shape => {
+  console.log(shape.setWidth(4).setHeight(5).getArea());
+});
+```
+
+## !do proper-substitution
+
+**Design inheritance that maintains behavioral contracts.** This ensures:
+- **Proper substitutability** of parent and child objects
+- **Consistent behavior** across the inheritance hierarchy
+- **Reliable polymorphism** without surprises
+- **Maintainable code** with clear contracts
+
+```ts !example
+abstract class Shape {
+  abstract getArea(): number;
+}
+
+class Rectangle extends Shape {
+  constructor(private width: number, private height: number) {
+    super();
+  }
+
+  getArea(): number {
+    return this.width * this.height;
+  }
+}
+
+class Square extends Shape {
+  constructor(private length: number) {
+    super();
+  }
+
+  getArea(): number {
+    return this.length * this.length;
+  }
+}
+
+// Both Rectangle and Square can be used interchangeably
+const shapes: Shape[] = [new Rectangle(4, 5), new Square(5)];
+shapes.forEach(shape => console.log(shape.getArea()));
+```
+
+</BestPractice>
+
+## Interface Segregation Principle
+
+<BestPractice title="Interface Segregation Principle (ISP)">
+
+Clients should not be forced to depend upon interfaces that they do not use. Design abstractions so clients only depend on methods they actually need.
+
+## !dont fat-interfaces
+
+**Create large interfaces with many unrelated methods.** This forces:
+- Clients to implement methods they don't use
+- Unnecessary dependencies on unused functionality
+- Violation of single responsibility at interface level
+- Difficult maintenance and testing
+
+```ts !example
+interface SmartPrinter {
+  print();
+  fax();
+  scan();
+}
+
+class EconomicPrinter implements SmartPrinter {
+  print() { /* Print logic */ }
+  
+  fax() {
+    throw new Error("Fax not supported."); // Forced to implement
+  }
+
+  scan() {
+    throw new Error("Scan not supported."); // Forced to implement
+  }
+}
+```
+
+## !do segregated-interfaces
+
+**Create focused interfaces with related methods.** This provides:
+- **Clients depend only** on methods they use
+- **Flexible composition** of functionality
+- **Easy implementation** without unused methods
+- **Better maintainability** and testability
+
+```ts !example
+interface Printer {
+  print();
+}
+
+interface Fax {
+  fax();
+}
+
+interface Scanner {
+  scan();
+}
+
+class AllInOnePrinter implements Printer, Fax, Scanner {
+  print() { /* Print logic */ }
+  fax() { /* Fax logic */ }
+  scan() { /* Scan logic */ }
+}
+
+class EconomicPrinter implements Printer {
+  print() { /* Print logic */ }
+  // Only implements what it actually uses
+}
+```
+
+</BestPractice>
+
+## Dependency Inversion Principle
+
+<BestPractice title="Dependency Inversion Principle (DIP)">
+
+High-level modules should not depend on low-level modules. Both should depend on abstractions. Abstractions should not depend upon details.
+
+## !dont concrete-dependencies
+
+**Depend directly on concrete implementations.** This creates:
+- Tight coupling between modules
+- Difficulty in testing with mocks
+- Hard to change implementations
+- Reduced flexibility and reusability
+
+```ts !example
+class XmlFormatter {
+  parse<T>(content: string): T {
+    // XML parsing logic
+  }
+}
+
+class ReportReader {
+  private readonly formatter = new XmlFormatter(); // Tightly coupled
+
+  async read(path: string): Promise<ReportData> {
+    const text = await readFile(path, "UTF8");
+    return this.formatter.parse<ReportData>(text);
+    // Hard to test or change formatter
+  }
+}
+```
+
+## !do dependency-injection
+
+**Depend on abstractions and inject dependencies.** This enables:
+- **Loose coupling** between modules
+- **Easy testing** with dependency injection
+- **Flexible implementations** without code changes
+- **Better maintainability** and extensibility
+
+```ts !example
+interface Formatter {
+  parse<T>(content: string): T;
+}
+
+class XmlFormatter implements Formatter {
+  parse<T>(content: string): T {
+    // XML parsing logic
+  }
+}
+
+class JsonFormatter implements Formatter {
+  parse<T>(content: string): T {
+    // JSON parsing logic
+  }
+}
+
+class ReportReader {
+  constructor(private readonly formatter: Formatter) {} // Depends on abstraction
+
+  async read(path: string): Promise<ReportData> {
+    const text = await readFile(path, "UTF8");
+    return this.formatter.parse<ReportData>(text);
+  }
+}
+
+// Easy to change implementations
+const xmlReader = new ReportReader(new XmlFormatter());
+const jsonReader = new ReportReader(new JsonFormatter());
+```
+
+</BestPractice> 

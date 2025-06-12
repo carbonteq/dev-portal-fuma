@@ -1,5 +1,5 @@
 ---
-title: Best Practices
+title: Overview
 ---
 
 In this section are presented some of the best practices, and guidelines for frontend applications gathered from different sources.
