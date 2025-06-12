@@ -20,7 +20,7 @@ export function ScrollyCoding(props: unknown) {
 
   return (
     <SelectionProvider>
-      <div className="scrolly-coding-container border border-gray-200 rounded-lg bg-white">
+      <div className="scrolly-coding-container border border-gray-200 rounded-lg bg-white lg:-mr-4">
         {/* Content and Code Layout */}
         <div className="flex">
 
@@ -52,8 +52,8 @@ export function ScrollyCoding(props: unknown) {
           </div>
 
           {/* Right Side - Code Display */}
-          <div className="basis-[55%] min-w-[400px] xl:w-[500px] max-w-xl bg-gray-50">
-            <div className="top-10 sticky overflow-auto">
+          <div className="basis-[55%] min-w-[400px] xl:w-[500px] max-w-xl bg-gray-50 rounded-r-lg">
+            <div className="top-10 xl:top-0 sticky overflow-auto rounded-r-lg">
               <Selection
                 from={steps.map((step, i) => (
                   <Code codeblock={step.code} />
