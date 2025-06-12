@@ -6,14 +6,15 @@ import { useSelection } from './Selection';
 interface CodeDisplayProps {
   doCodeRendered?: ReactNode;
   dontCodeRendered?: ReactNode;
+  className?: string;
 }
 
-export function CodeDisplay({ doCodeRendered, dontCodeRendered }: CodeDisplayProps) {
+export function CodeDisplay({ doCodeRendered, dontCodeRendered, className }: CodeDisplayProps) {
   const { selected } = useSelection();
   const codeToShow = selected === 'do' ? doCodeRendered : dontCodeRendered;
   
   return (
-    <div className="p-1">
+    <div className={`p-1 ${className || ''}`}>
            
       {codeToShow ? (
         <div>

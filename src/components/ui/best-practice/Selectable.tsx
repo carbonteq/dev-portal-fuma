@@ -18,7 +18,11 @@ export function Selectable({ type, children, className = '' }: SelectableProps) 
   
   // Base styles that work for both types
   const containerStyles = cn(
-    "relative p-6 cursor-pointer dark mt-1 bg-[#e8ecf1]",
+    "relative p-6 cursor-pointer dark mt-1 transition-all duration-200 group",
+    // Selected state
+    isSelected && "bg-[#e8ecf1]",
+    // Unselected state with hover effects
+    !isSelected && "bg-gray-50 border-1 border-transparent hover:border-gray-300",
     isDont && "border-r border-gray-200",
     className
   );
@@ -31,8 +35,8 @@ export function Selectable({ type, children, className = '' }: SelectableProps) 
 
   // Content wrapper styles
   const contentStyles = cn(
-    "relative z-10 ",
-    !isSelected && "best-practice-unselected"
+    "relative z-10 transition-opacity duration-200",
+    !isSelected && "best-practice-unselected opacity-70 hover:opacity-90"
   );
 
   // Animation configuration

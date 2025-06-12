@@ -26,9 +26,16 @@ export async function BestPractice(props: unknown) {
   }
 
   // Pre-render code blocks on server side using Promise.all for better performance
+  // Use rounded-b-md to remove top rounded corners since code display is below the explanation sections
   const [doCodeRendered, dontCodeRendered] = await Promise.all([
-    doExample?.example ? Code({ codeblock: doExample.example }) : null,
-    dontExample?.example ? Code({ codeblock: dontExample.example }) : null
+    doExample?.example ? Code({ 
+      codeblock: doExample.example, 
+      className: "min-h-[10rem] border px-3 py-3 rounded-b-md text-sm" 
+    }) : null,
+    dontExample?.example ? Code({ 
+      codeblock: dontExample.example, 
+      className: "min-h-[10rem] border px-3 py-3 rounded-b-md text-sm" 
+    }) : null
   ]);
 
   return (
