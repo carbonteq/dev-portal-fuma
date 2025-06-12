@@ -37,7 +37,7 @@ export function ScrollyCoding(props: unknown) {
                   {/* Step indicator */}
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold">
-                      {i + 1}
+                      <span className="text-xs leading-none text-center mt-[1px]">{i + 1}</span>
                     </div>
                     <h4 className="flex-1 font-semibold text-gray-900 not-prose">{step.title}</h4>
                   </div>
