@@ -50,6 +50,14 @@
     }
   }
 
+  [data-card]{
+    &:hover{
+      & p{
+        color: var(--color-fd-foreground);
+      }
+    }
+  }
+
   /* Best Practice Component Dark Theme Handling */
   .best-practice-unselected {
     --color-fd-foreground: hsl(0, 0%, 2%);
