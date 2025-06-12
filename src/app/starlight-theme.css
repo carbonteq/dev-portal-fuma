@@ -65,7 +65,12 @@
   }
 
   .best-practice-unselected code{
-    color: hsl(0, 0%, 99%)!important;
+    color: var(--color-fd-accent-foreground)!important;
+  }
+
+  .dark .prose code{
+    background-color: var(--color-fd-secondary)!important;
+    color: var(--color-fd-accent-foreground)!important;
   }
 
  

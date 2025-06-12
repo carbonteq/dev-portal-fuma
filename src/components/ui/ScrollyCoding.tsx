@@ -26,13 +26,17 @@ export function ScrollyCoding(props: unknown) {
 
           {/* Left Side - Steps Content */}
           <div className="basis-[45%] grid grid-cols-1 gap-y-40 border-r border-gray-200 mb-[60vh]">
-            {steps.map((step, i) => (
-              <Selectable
-                key={i}
-                index={i}
-                selectOn={["click", "scroll"]}
-                className="block border-l-4 border-transparent data-[selected=true]:bg-gray-50 data-[selected=true]:border-black transition-all duration-300 cursor-pointer"
-              >
+            {steps.map((step, i) => {
+              // Apply border radius to first element to match container's rounded-lg
+              const borderRadiusClass = i === 0 ? 'rounded-tl-lg' : '';
+              
+              return (
+                <Selectable
+                  key={i}
+                  index={i}
+                  selectOn={["click", "scroll"]}
+                  className={`block border-l-4 border-transparent data-[selected=true]:bg-gray-50 data-[selected=true]:border-black transition-all duration-300 cursor-pointer ${borderRadiusClass}`}
+                >
                 <div className="p-4 border-b border-gray-100 last:border-b-0">
                   {/* Step indicator */}
                   <div className="flex items-center gap-3 mb-3">
@@ -47,16 +51,17 @@ export function ScrollyCoding(props: unknown) {
                     {step.children}
                   </div>
                 </div>
-              </Selectable>
-            ))}
+                </Selectable>
+              );
+            })}
           </div>
 
           {/* Right Side - Code Display */}
           <div className="basis-[55%] min-w-[400px] xl:w-[500px] max-w-xl bg-gray-50 rounded-r-lg">
-            <div className="top-10 xl:top-0 sticky overflow-auto max-h-[96vh] rounded-r-lg">
+            <div className="custom-scrollbar top-10 xl:top-0 sticky h-[calc(100vh-2.5rem)] xl:h-[100vh] rounded-r-lg">
               <Selection
                 from={steps.map((step, i) => (
-                  <Code codeblock={step.code} />
+                  <Code codeblock={step.code} className="min-h-full border px-4 py-3 rounded-md rounded-l-none text-sm" />
                 ))}
               />
             </div>
@@ -67,14 +72,14 @@ export function ScrollyCoding(props: unknown) {
   );
 }
 
-export async function Code({ codeblock }: { codeblock: RawCode }) {
+export async function Code({ codeblock, className }: { codeblock: RawCode, className?: string }) {
   const highlighted = await highlight(codeblock, "github-from-css")
   return (
     <Pre
       code={highlighted}
       handlers={[
         tokenTransitions, wordWrap, callout, warning, error, info, mark, collapsable, collapseTrigger, collapseContent]}
-      className="min-h-[40rem] border px-4 py-3 rounded-md rounded-l-none text-sm"
+      className={className || "min-h-[40rem] border px-4 py-3 rounded-md rounded-l-none text-sm"}
     />
   )
 }
