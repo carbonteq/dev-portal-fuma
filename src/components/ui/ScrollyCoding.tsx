@@ -53,7 +53,7 @@ export function ScrollyCoding(props: unknown) {
 
           {/* Right Side - Code Display */}
           <div className="basis-[55%] min-w-[400px] xl:w-[500px] max-w-xl bg-gray-50 rounded-r-lg">
-            <div className="top-10 xl:top-0 sticky overflow-auto rounded-r-lg">
+            <div className="top-10 xl:top-0 sticky overflow-auto max-h-[96vh] rounded-r-lg">
               <Selection
                 from={steps.map((step, i) => (
                   <Code codeblock={step.code} />
