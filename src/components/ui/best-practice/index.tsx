@@ -38,7 +38,7 @@ export async function BestPractice(props: unknown) {
         
 
         {/* Row 1: Side-by-side explanations */}
-        <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-200 px-1">
           {/* Don't Practice Column */}
           {dontExample && (
             <Selectable type="dont" className={'rounded-tl-lg'}>
