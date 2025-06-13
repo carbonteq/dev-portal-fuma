@@ -1,5 +1,5 @@
 import { InlineAnnotation, AnnotationHandler } from "codehike/code"
-import { WarningTriangle, XmarkCircle, InfoCircle, MessageText } from "iconoir-react"
+import { WarningTriangle, XmarkCircle, InfoCircle, GoogleDocs } from "iconoir-react"
 
 // Shared transform function for all callout types
 const createCalloutTransform = (name: string) => (annotation: InlineAnnotation) => {
@@ -98,7 +98,7 @@ export const callout: AnnotationHandler = {
     "--ch-callout-bg",
     "--ch-callout-border", 
     "--ch-callout-text",
-    <MessageText width="12" height="12" strokeWidth={1.5} />
+    <GoogleDocs width="12" height="12" strokeWidth={1.5} />
   ),
 }
 
