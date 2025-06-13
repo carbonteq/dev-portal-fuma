@@ -20,9 +20,9 @@ export function Selectable({ type, children, className = '' }: SelectableProps) 
   const containerStyles = cn(
     "relative p-6 cursor-pointer mt-1 transition-all duration-200 group",
     // Selected state
-    isSelected && "bg-[#e8ecf1]",
+    isSelected && "bg-[#e8ecf1] dark",
     // Unselected state with hover effects
-    !isSelected && "bg-gray-50 border-1 border-transparent hover:border-gray-300 prose-invert",
+    !isSelected && "bg-gray-50 border-1 border-transparent hover:border-gray-300",
     isDont && "border-r border-gray-200",
     className
   );
