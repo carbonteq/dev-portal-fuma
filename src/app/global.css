@@ -233,8 +233,8 @@ nav {
 
 .custom-scrollbar {
     overflow-y: hidden;
-    scrollbar-width: thin; /* For Firefox */
-    scrollbar-color: #a0aec0 transparent; /* gray-400 For Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-fd-muted-foreground) transparent;
 }
 
 .custom-scrollbar:hover {
@@ -251,10 +251,23 @@ nav {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #a0aec0; /* gray-400 */
+    background-color: var(--color-fd-muted-foreground);
     border-radius: 2px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-corner {
     background: transparent;
+}
+
+/* Dark mode scrollbar */
+.dark .custom-scrollbar {
+    scrollbar-color: var(--color-fd-muted-foreground) var(--color-fd-muted);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--color-fd-muted);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--color-fd-muted-foreground);
 }
