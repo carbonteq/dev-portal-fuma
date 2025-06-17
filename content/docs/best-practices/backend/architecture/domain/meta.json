@@ -3,6 +3,7 @@
   "defaultOpen": true,
   "pages": [
     "domain-overview",
-    "domain-best-practices"
+    "domain-best-practices",
+    "domain-tests"
   ]
 } 

@@ -1,0 +1,1291 @@
+---
+title: Testing Domain
+description: Learn how to build robust test factories for domain entities using Effect Schema, Faker, and type-safe patterns
+---
+
+import { ScrollyCoding } from "@/components/ui/ScrollyCoding";
+
+# Entity Test Factory Patterns
+
+Building robust test factories is crucial for maintaining reliable test suites. This guide demonstrates how to create sophisticated test factories for domain entities using Effect Schema, Faker, and type-safe patterns. We'll use a Host entity as our example, but these patterns apply to any domain entity.
+
+## Overview
+
+Test factories solve the problem of creating realistic test data while maintaining type safety and flexibility. We'll explore how to build a comprehensive factory system that handles complex domain entities with optional fields, nested value objects, and probability-based generation.
+
+The patterns demonstrated here work for any domain entity - whether it's a User, Product, Order, or in our case, a Host entity. The key principles remain consistent across different entity types.
+
+<ScrollyCoding>
+
+## !!steps Schema Foundation with Faker Annotations
+
+Start by extending your base entity schema with faker-based annotations. This provides the foundation for generating realistic test data while maintaining type safety.
+
+```typescript !
+import { Host, HostSchema } from "@domain/entities/user/host.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { faker } from "@faker-js/faker";
+import { Arbitrary, Effect as E, FastCheck, Schema as S } from "effect";
+import { refined } from "../utils/arbitrary.utils";
+import type { SerializedHost } from "@domain/entities/user/host.entity";
+
+// !mark(1:8) #22c55e
+export const TestHostSchema = S.Struct({
+  id: HostSchema.fields.id.annotations(refined.uuid()), // !callout[/refined\.uuid\(\)/] #22c55e Generates valid UUID strings
+  createdAt: HostSchema.fields.createdAt.annotations(refined.dateTime.past()), // !callout[/refined\.dateTime\.past\(\)/] #22c55e Creates realistic past timestamps
+  updatedAt: HostSchema.fields.updatedAt.annotations(refined.dateTime.recent()), // !callout[/refined\.dateTime\.recent\(\)/] #22c55e Creates recent timestamps
+  userId: HostSchema.fields.userId.annotations(refined.uuid()),
+});
+```
+
+## !!steps Handling Union Types with Members
+
+Union types in Effect Schema require special handling. Use `members[0]` to access the first member of a union and add annotations to it.
+
+```typescript !
+// !collapse(1:7) collapsed
+// Collapsed imports
+import { Host, HostSchema } from "@domain/entities/user/host.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { faker } from "@faker-js/faker";
+import { Arbitrary, Effect as E, FastCheck, Schema as S } from "effect";
+import { refined } from "../utils/arbitrary.utils";
+import type { SerializedHost } from "@domain/entities/user/host.entity";
+
+export const TestHostSchema = S.Struct({
+  id: HostSchema.fields.id.annotations(refined.uuid()),
+  // !mark(1:2) #eab308
+  createdAt: HostSchema.fields.createdAt.members[0].annotations(refined.dateTime.past()), // !callout[/\.members\[0\]/] #eab308 Access first union member for annotation
+  updatedAt: HostSchema.fields.updatedAt.members[0].annotations(refined.dateTime.recent()), // !info[/\.members\[0\]/] #eab308 Required for Date | null union types
+  userId: HostSchema.fields.userId.annotations(refined.uuid()),
+});
+```
+
+## !!steps Smart Optional Field Generation
+
+Optional fields need special handling with `S.encodedBoundSchema` and probability-based generation. This allows you to control how often optional fields are populated.
+
+```typescript !
+// !collapse(1:7) collapsed
+// Collapsed imports
+import { Host, HostSchema } from "@domain/entities/user/host.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { faker } from "@faker-js/faker";
+import { Arbitrary, Effect as E, FastCheck, Schema as S } from "effect";
+import { refined } from "../utils/arbitrary.utils";
+import type { SerializedHost } from "@domain/entities/user/host.entity";
+
+export const TestHostSchema = S.Struct({
+  id: HostSchema.fields.id.annotations(refined.uuid()),
+  createdAt: HostSchema.fields.createdAt.members[0].annotations(refined.dateTime.past()),
+  updatedAt: HostSchema.fields.updatedAt.members[0].annotations(refined.dateTime.recent()),
+  userId: HostSchema.fields.userId.annotations(refined.uuid()),
+  // !mark(1:9) #22c55e
+  // Optional fields with probability-based generation
+  dob: S.encodedBoundSchema(HostSchema.fields.dob as any).annotations( // !callout[/S\.encodedBoundSchema/] #22c55e Handles optional schema fields safely
+    refined.optional.value(() => faker.date.past({ years: 50 }), 0.8) // !info[/0\.8/] #22c55e 80% chance of generating a value
+  ),
+  phoneNumber: S.encodedBoundSchema(HostSchema.fields.phoneNumber as any).annotations(
+    refined.optional.value(() => 5551234567, 0) // !warning[/0/] #22c55e Always null - no phone by default
+  ),
+  profileImage: S.encodedBoundSchema(HostSchema.fields.profileImage as any).annotations(
+    refined.optional.string(() => `/profiles/${faker.system.fileName()}.jpg`, 0.7) // !callout[/refined\.optional\.string/] #22c55e String-specific optional generator
+  ),
+});
+```
+
+## !!steps Organizing Complex Generators
+
+Move complex generation logic into dedicated objects for better organization and reusability. This keeps the schema clean and makes generators testable.
+
+```typescript !
+// !collapse(1:7) collapsed
+// Collapsed imports
+import { Host, HostSchema } from "@domain/entities/user/host.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { faker } from "@faker-js/faker";
+import { Arbitrary, Effect as E, FastCheck, Schema as S } from "effect";
+import { refined } from "../utils/arbitrary.utils";
+import type { SerializedHost } from "@domain/entities/user/host.entity";
+
+// !mark(1:28) #22c55e
+/**
+ * Host-specific generators (domain business logic)
+ */
+const hostGenerators = {
+  phoneNumber: () => { // !callout[/phoneNumber/] #22c55e Domain-specific phone number generation
+    // Generate valid 10-digit US phone number
+    const exchange = faker.number.int({ min: 100, max: 999 });
+    const number = faker.number.int({ min: 1000, max: 9999 });
+    return parseInt(`555${exchange}${number}`); // !info[/555/] #22c55e Test-safe area code
+  },
+  profileImage: () => { // !callout[/profileImage/] #22c55e Realistic file path generation
+    const fileName = faker.system.fileName({ extensionCount: 0 });
+    const ext = faker.helpers.arrayElement(["jpg", "jpeg", "png", "webp"]);
+    return `/profiles/${fileName}.${ext}`;
+  },
+  dob: () => { // !callout[/dob/] #22c55e Age-appropriate date generation
+    // Generate date of birth for someone between 18-65 years old
+    const now = new Date();
+    const minAge = 18;
+    const maxAge = 65;
+    const birthYear = now.getFullYear() - faker.number.int({ min: minAge, max: maxAge });
+    return faker.date.between({
+      from: new Date(birthYear, 0, 1),
+      to: new Date(birthYear, 11, 31)
+    });
+  }
+};
+
+// !collapse(1:15) collapsed
+// Collapsed TestHostSchema
+export const TestHostSchema = S.Struct({
+  id: HostSchema.fields.id.annotations(refined.uuid()),
+  createdAt: HostSchema.fields.createdAt.members[0].annotations(refined.dateTime.past()),
+  updatedAt: HostSchema.fields.updatedAt.members[0].annotations(refined.dateTime.recent()),
+  userId: HostSchema.fields.userId.annotations(refined.uuid()),
+  dob: S.encodedBoundSchema(HostSchema.fields.dob as any).annotations(
+    refined.optional.value(hostGenerators.dob, 0.8)
+  ),
+  phoneNumber: S.encodedBoundSchema(HostSchema.fields.phoneNumber as any).annotations(
+    refined.optional.value(hostGenerators.phoneNumber, 0)
+  ),
+  profileImage: S.encodedBoundSchema(HostSchema.fields.profileImage as any).annotations(
+    refined.optional.string(hostGenerators.profileImage, 0.7)
+  ),
+});
+```
+
+## !!steps Nested Value Object Generators
+
+Handle complex nested structures like addresses with dedicated generator objects. This maintains separation of concerns and makes the code more maintainable.
+
+```typescript !
+// !collapse(1:7) collapsed
+// Collapsed imports
+import { Host, HostSchema } from "@domain/entities/user/host.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { faker } from "@faker-js/faker";
+import { Arbitrary, Effect as E, FastCheck, Schema as S } from "effect";
+import { refined } from "../utils/arbitrary.utils";
+import type { SerializedHost } from "@domain/entities/user/host.entity";
+
+// !collapse(1:23) collapsed
+// Collapsed hostGenerators
+const hostGenerators = {
+  phoneNumber: () => {
+    const exchange = faker.number.int({ min: 100, max: 999 });
+    const number = faker.number.int({ min: 1000, max: 9999 });
+    return parseInt(`555${exchange}${number}`);
+  },
+  profileImage: () => {
+    const fileName = faker.system.fileName({ extensionCount: 0 });
+    const ext = faker.helpers.arrayElement(["jpg", "jpeg", "png", "webp"]);
+    return `/profiles/${fileName}.${ext}`;
+  },
+  dob: () => {
+    const now = new Date();
+    const minAge = 18;
+    const maxAge = 65;
+    const birthYear = now.getFullYear() - faker.number.int({ min: minAge, max: maxAge });
+    return faker.date.between({
+      from: new Date(birthYear, 0, 1),
+      to: new Date(birthYear, 11, 31)
+    });
+  }
+};
+
+// !mark(1:10) #22c55e
+/**
+ * Address-specific generators
+ */
+const addressGenerators = {
+  country: () => faker.location.country(), // !callout[/faker\.location/] #22c55e Realistic geographic data
+  city: () => faker.location.city(),
+  state: () => faker.location.state({ abbreviated: true }), // !info[/abbreviated: true/] #22c55e Two-letter state codes
+  zipCode: () => faker.location.zipCode(),
+  address: () => faker.location.streetAddress()
+};
+
+export const TestHostSchema = S.Struct({
+  // !collapse(1:14) collapsed
+  // Collapsed properties
+  id: HostSchema.fields.id.annotations(refined.uuid()),
+  createdAt: HostSchema.fields.createdAt.members[0].annotations(refined.dateTime.past()),
+  updatedAt: HostSchema.fields.updatedAt.members[0].annotations(refined.dateTime.recent()),
+  userId: HostSchema.fields.userId.annotations(refined.uuid()),
+  dob: S.encodedBoundSchema(HostSchema.fields.dob as any).annotations(
+    refined.optional.value(hostGenerators.dob, 0.8)
+  ),
+  phoneNumber: S.encodedBoundSchema(HostSchema.fields.phoneNumber as any).annotations(
+    refined.optional.value(hostGenerators.phoneNumber, 0)
+  ),
+  profileImage: S.encodedBoundSchema(HostSchema.fields.profileImage as any).annotations(
+    refined.optional.string(hostGenerators.profileImage, 0.7)
+  ),
+
+  // !mark(1:18) #22c55e
+  // Address value object with nested optional fields
+  address: S.Struct({
+    country: S.encodedBoundSchema(S.optional(S.String) as any).annotations( // !callout[/S\.optional\(S\.String\)/] #22c55e Explicit optional string schema
+      refined.optional.string(addressGenerators.country, 0.9)
+    ),
+    city: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.city, 0.9)
+    ),
+    state: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.state, 0.8)
+    ),
+    zipCode: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.zipCode, 0.8)
+    ),
+    address: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.address, 0.9)
+    )
+  })
+});
+```
+
+## !!steps Base Generator Function
+
+Create the main generator function that uses FastCheck to sample from your schema. This provides type-safe generation with override capabilities.
+
+```typescript !
+// !collapse(1:7) collapsed
+// Collapsed imports
+import { Host, HostSchema } from "@domain/entities/user/host.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { faker } from "@faker-js/faker";
+import { Arbitrary, Effect as E, FastCheck, Schema as S } from "effect";
+import { refined } from "../utils/arbitrary.utils";
+import type { SerializedHost } from "@domain/entities/user/host.entity";
+
+// !collapse(1:23) collapsed
+// Collapsed hostGenerators
+const hostGenerators = {
+  phoneNumber: () => {
+    const exchange = faker.number.int({ min: 100, max: 999 });
+    const number = faker.number.int({ min: 1000, max: 9999 });
+    return parseInt(`555${exchange}${number}`);
+  },
+  profileImage: () => {
+    const fileName = faker.system.fileName({ extensionCount: 0 });
+    const ext = faker.helpers.arrayElement(["jpg", "jpeg", "png", "webp"]);
+    return `/profiles/${fileName}.${ext}`;
+  },
+  dob: () => {
+    const now = new Date();
+    const minAge = 18;
+    const maxAge = 65;
+    const birthYear = now.getFullYear() - faker.number.int({ min: minAge, max: maxAge });
+    return faker.date.between({
+      from: new Date(birthYear, 0, 1),
+      to: new Date(birthYear, 11, 31)
+    });
+  }
+};
+
+// !collapse(1:8) collapsed
+// Collapsed addressGenerators
+const addressGenerators = {
+  country: () => faker.location.country(),
+  city: () => faker.location.city(),
+  state: () => faker.location.state({ abbreviated: true }),
+  zipCode: () => faker.location.zipCode(),
+  address: () => faker.location.streetAddress()
+};
+
+// !collapse(1:33) collapsed
+// Collapsed TestHostSchema
+export const TestHostSchema = S.Struct({
+  id: HostSchema.fields.id.annotations(refined.uuid()),
+  createdAt: HostSchema.fields.createdAt.members[0].annotations(refined.dateTime.past()),
+  updatedAt: HostSchema.fields.updatedAt.members[0].annotations(refined.dateTime.recent()),
+  userId: HostSchema.fields.userId.annotations(refined.uuid()),
+  dob: S.encodedBoundSchema(HostSchema.fields.dob as any).annotations(
+    refined.optional.value(hostGenerators.dob, 0.8)
+  ),
+  phoneNumber: S.encodedBoundSchema(HostSchema.fields.phoneNumber as any).annotations(
+    refined.optional.value(hostGenerators.phoneNumber, 0)
+  ),
+  profileImage: S.encodedBoundSchema(HostSchema.fields.profileImage as any).annotations(
+    refined.optional.string(hostGenerators.profileImage, 0.7)
+  ),
+  address: S.Struct({
+    country: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.country, 0.9)
+    ),
+    city: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.city, 0.9)
+    ),
+    state: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.state, 0.8)
+    ),
+    zipCode: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.zipCode, 0.8)
+    ),
+    address: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.address, 0.9)
+    )
+  })
+});
+
+// !mark(1:16) #22c55e
+/**
+ * Factory function for creating test entity data
+ */
+export const generateTestHost = (overrides: Partial<SerializedHost> = {}): SerializedHost => { // !callout[/overrides: Partial<SerializedHost>/] #22c55e Type-safe partial overrides
+  const arbitrary = Arbitrary.make(TestHostSchema); // !callout[/Arbitrary\.make/] #22c55e Creates FastCheck arbitrary from Effect Schema
+  const sample = FastCheck.sample(arbitrary, 1)[0]; // !info[/FastCheck\.sample/] #22c55e Generates single sample from arbitrary
+
+  if (!sample) { // !warning[/if \(!sample\)/] #22c55e Always check for generation failures
+    throw new Error("Failed to generate test host data");
+  }
+
+  return {
+    ...sample, // !callout[/\.\.\.sample/] #22c55e Spread generated data
+    ...overrides // !callout[/\.\.\.overrides/] #22c55e Apply user overrides last
+  } as SerializedHost;
+};
+```
+
+## !!steps Scenario-Based Helper Methods
+
+Build helper methods for common testing scenarios. These methods use the base generator internally but provide convenient presets for specific use cases.
+
+```typescript !
+// !collapse(1:7) collapsed
+// Collapsed imports
+import { Host, HostSchema } from "@domain/entities/user/host.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { faker } from "@faker-js/faker";
+import { Arbitrary, Effect as E, FastCheck, Schema as S } from "effect";
+import { refined } from "../utils/arbitrary.utils";
+import type { SerializedHost } from "@domain/entities/user/host.entity";
+
+// !collapse(1:23) collapsed
+// Collapsed hostGenerators
+const hostGenerators = {
+  phoneNumber: () => {
+    const exchange = faker.number.int({ min: 100, max: 999 });
+    const number = faker.number.int({ min: 1000, max: 9999 });
+    return parseInt(`555${exchange}${number}`);
+  },
+  profileImage: () => {
+    const fileName = faker.system.fileName({ extensionCount: 0 });
+    const ext = faker.helpers.arrayElement(["jpg", "jpeg", "png", "webp"]);
+    return `/profiles/${fileName}.${ext}`;
+  },
+  dob: () => {
+    const now = new Date();
+    const minAge = 18;
+    const maxAge = 65;
+    const birthYear = now.getFullYear() - faker.number.int({ min: minAge, max: maxAge });
+    return faker.date.between({
+      from: new Date(birthYear, 0, 1),
+      to: new Date(birthYear, 11, 31)
+    });
+  }
+};
+
+// !collapse(1:8) collapsed
+// Collapsed addressGenerators
+const addressGenerators = {
+  country: () => faker.location.country(),
+  city: () => faker.location.city(),
+  state: () => faker.location.state({ abbreviated: true }),
+  zipCode: () => faker.location.zipCode(),
+  address: () => faker.location.streetAddress()
+};
+
+// !collapse(1:33) collapsed
+// Collapsed TestHostSchema
+export const TestHostSchema = S.Struct({
+  id: HostSchema.fields.id.annotations(refined.uuid()),
+  createdAt: HostSchema.fields.createdAt.members[0].annotations(refined.dateTime.past()),
+  updatedAt: HostSchema.fields.updatedAt.members[0].annotations(refined.dateTime.recent()),
+  userId: HostSchema.fields.userId.annotations(refined.uuid()),
+  dob: S.encodedBoundSchema(HostSchema.fields.dob as any).annotations(
+    refined.optional.value(hostGenerators.dob, 0.8)
+  ),
+  phoneNumber: S.encodedBoundSchema(HostSchema.fields.phoneNumber as any).annotations(
+    refined.optional.value(hostGenerators.phoneNumber, 0)
+  ),
+  profileImage: S.encodedBoundSchema(HostSchema.fields.profileImage as any).annotations(
+    refined.optional.string(hostGenerators.profileImage, 0.7)
+  ),
+  address: S.Struct({
+    country: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.country, 0.9)
+    ),
+    city: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.city, 0.9)
+    ),
+    state: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.state, 0.8)
+    ),
+    zipCode: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.zipCode, 0.8)
+    ),
+    address: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.address, 0.9)
+    )
+  })
+});
+
+// !collapse(1:14) collapsed
+// Collapsed generateTestHost
+export const generateTestHost = (overrides: Partial<SerializedHost> = {}): SerializedHost => {
+  const arbitrary = Arbitrary.make(TestHostSchema);
+  const sample = FastCheck.sample(arbitrary, 1)[0];
+
+  if (!sample) {
+    throw new Error("Failed to generate test host data");
+  }
+
+  return {
+    ...sample,
+    ...overrides
+  } as SerializedHost;
+};
+
+// !mark(1:21) #22c55e
+/**
+ * Scenario-specific factory functions for common testing patterns
+ */
+export const createCompleteProfileHost = (overrides: Partial<SerializedHost> = {}): SerializedHost => {
+  const baseHost = generateTestHost();
+
+  return {
+    ...baseHost,
+    dob: hostGenerators.dob(), // !callout[/hostGenerators\.dob\(\)/] #22c55e Force generation of optional fields
+    phoneNumber: hostGenerators.phoneNumber(),
+    profileImage: `/profiles/${faker.system.fileName({ extensionCount: 0 })}.jpg`,
+    address: { // !info[/address:/] #22c55e Complete address object
+      country: faker.location.country(),
+      city: faker.location.city(),
+      state: faker.location.state({ abbreviated: true }),
+      zipCode: faker.location.zipCode(),
+      address: faker.location.streetAddress()
+    },
+    ...overrides
+  };
+};
+
+// !mark(1:18) #22c55e
+export const createMinimalHost = (overrides: Partial<SerializedHost> = {}): SerializedHost => {
+  const baseHost = generateTestHost();
+
+  return {
+    ...baseHost,
+    dob: null, // !callout[/null/] #22c55e Explicitly null optional fields
+    phoneNumber: null,
+    profileImage: null,
+    address: { // !info[/address: \{/] #22c55e All address fields null
+      country: null,
+      city: null,
+      state: null,
+      zipCode: null,
+      address: null
+    },
+    ...overrides
+  };
+};
+```
+
+## !!steps Database Integration
+
+Create database-specific factory functions that handle the repository pattern and proper type conversion for database insertion.
+
+```typescript !
+// !collapse(1:7) collapsed
+// Collapsed imports
+import { Host, HostSchema } from "@domain/entities/user/host.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { faker } from "@faker-js/faker";
+import { Arbitrary, Effect as E, FastCheck, Schema as S } from "effect";
+import { refined } from "../utils/arbitrary.utils";
+import type { SerializedHost } from "@domain/entities/user/host.entity";
+
+// !mark(1:3) #22c55e
+import type { TestDatabase } from "../setup/database";
+import * as schema from "../../app/infrastrcture/db/drizzle/models"; 
+import { HostDrizzleRepository } from "../../app/infrastrcture/db/drizzle/repositories/host.drizzle.repository";
+
+// !collapse(1:23) collapsed
+// Collapsed hostGenerators
+const hostGenerators = {
+  phoneNumber: () => {
+    const exchange = faker.number.int({ min: 100, max: 999 });
+    const number = faker.number.int({ min: 1000, max: 9999 });
+    return parseInt(`555${exchange}${number}`);
+  },
+  profileImage: () => {
+    const fileName = faker.system.fileName({ extensionCount: 0 });
+    const ext = faker.helpers.arrayElement(["jpg", "jpeg", "png", "webp"]);
+    return `/profiles/${fileName}.${ext}`;
+  },
+  dob: () => {
+    const now = new Date();
+    const minAge = 18;
+    const maxAge = 65;
+    const birthYear = now.getFullYear() - faker.number.int({ min: minAge, max: maxAge });
+    return faker.date.between({
+      from: new Date(birthYear, 0, 1),
+      to: new Date(birthYear, 11, 31)
+    });
+  }
+};
+
+// !collapse(1:8) collapsed
+// Collapsed addressGenerators
+const addressGenerators = {
+  country: () => faker.location.country(),
+  city: () => faker.location.city(),
+  state: () => faker.location.state({ abbreviated: true }),
+  zipCode: () => faker.location.zipCode(),
+  address: () => faker.location.streetAddress()
+};
+
+// !collapse(1:33) collapsed
+// Collapsed TestHostSchema
+export const TestHostSchema = S.Struct({
+  id: HostSchema.fields.id.annotations(refined.uuid()),
+  createdAt: HostSchema.fields.createdAt.members[0].annotations(refined.dateTime.past()),
+  updatedAt: HostSchema.fields.updatedAt.members[0].annotations(refined.dateTime.recent()),
+  userId: HostSchema.fields.userId.annotations(refined.uuid()),
+  dob: S.encodedBoundSchema(HostSchema.fields.dob as any).annotations(
+    refined.optional.value(hostGenerators.dob, 0.8)
+  ),
+  phoneNumber: S.encodedBoundSchema(HostSchema.fields.phoneNumber as any).annotations(
+    refined.optional.value(hostGenerators.phoneNumber, 0)
+  ),
+  profileImage: S.encodedBoundSchema(HostSchema.fields.profileImage as any).annotations(
+    refined.optional.string(hostGenerators.profileImage, 0.7)
+  ),
+  address: S.Struct({
+    country: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.country, 0.9)
+    ),
+    city: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.city, 0.9)
+    ),
+    state: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.state, 0.8)
+    ),
+    zipCode: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.zipCode, 0.8)
+    ),
+    address: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.address, 0.9)
+    )
+  })
+});
+
+// !collapse(1:14) collapsed
+// Collapsed generateTestHost
+export const generateTestHost = (overrides: Partial<SerializedHost> = {}): SerializedHost => {
+  const arbitrary = Arbitrary.make(TestHostSchema);
+  const sample = FastCheck.sample(arbitrary, 1)[0];
+
+  if (!sample) {
+    throw new Error("Failed to generate test host data");
+  }
+
+  return {
+    ...sample,
+    ...overrides
+  } as SerializedHost;
+};
+
+// !collapse(1:19) collapsed
+// Collapsed createCompleteProfileHost
+export const createCompleteProfileHost = (overrides: Partial<SerializedHost> = {}): SerializedHost => {
+  const baseHost = generateTestHost();
+
+  return {
+    ...baseHost,
+    dob: hostGenerators.dob(),
+    phoneNumber: hostGenerators.phoneNumber(),
+    profileImage: `/profiles/${faker.system.fileName({ extensionCount: 0 })}.jpg`,
+    address: {
+      country: faker.location.country(),
+      city: faker.location.city(),
+      state: faker.location.state({ abbreviated: true }),
+      zipCode: faker.location.zipCode(),
+      address: faker.location.streetAddress()
+    },
+    ...overrides
+  };
+};
+
+// !collapse(1:19) collapsed
+// Collapsed createMinimalHost
+export const createMinimalHost = (overrides: Partial<SerializedHost> = {}): SerializedHost => {
+  const baseHost = generateTestHost();
+
+  return {
+    ...baseHost,
+    dob: null,
+    phoneNumber: null,
+    profileImage: null,
+    address: {
+      country: null,
+      city: null,
+      state: null,
+      zipCode: null,
+      address: null
+    },
+    ...overrides
+  };
+};
+
+// !mark(1:35) #22c55e
+/**
+ * Database integration functions for entity persistence
+ */
+export async function createTestHost(
+  db: TestDatabase["db"],
+  overrides: Partial<SerializedHost> = {}
+): Promise<typeof schema.hosts.$inferSelect> { // !callout[/\$inferSelect/] #22c55e Drizzle inferred select type
+  // Generate test entity data and apply overrides
+  const baseHostData = {
+    ...generateTestHost(),
+    ...overrides
+  };
+
+  // Ensure we have properly typed UUIDs and timestamps for database insertion
+  const hostData = {
+    ...baseHostData,
+    id: UUID.init(), // !callout[/UUID\.init\(\)/] #22c55e Generate fresh UUID for database
+    userId: (overrides.userId as UUID) || UUID.init(), // !warning[/as UUID/] #22c55e Type assertion for override handling
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  // Create entity and use repository's toDbSerialized method
+  const hostEntity = await E.runPromise(Host.create(hostData)); // !callout[/E\.runPromise/] #22c55e Run Effect to get entity
+  const repository = new HostDrizzleRepository(db);
+  const dbData = await E.runPromise(repository.toDbSerialized(hostEntity)); // !info[/toDbSerialized/] #22c55e Convert entity to database format
+
+  const [insertedHost] = await db.insert(schema.hosts).values(dbData).returning(); // !callout[/\.returning\(\)/] #22c55e Get inserted record back
+
+  if (!insertedHost) {
+    throw new Error("Failed to create test host");
+  }
+
+  return insertedHost;
+}
+```
+
+## !!steps Entity Creation Utilities
+
+Build Effect-based utilities for creating domain entities directly. This provides functional error handling and composability for complex test scenarios.
+
+```typescript !
+// !collapse(1:10) collapsed
+// Collapsed imports
+import { Host, HostSchema } from "@domain/entities/user/host.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { faker } from "@faker-js/faker";
+import { Arbitrary, Effect as E, FastCheck, Schema as S } from "effect";
+import { refined } from "../utils/arbitrary.utils";
+import * as schema from "../../app/infrastrcture/db/drizzle/models";
+import { HostDrizzleRepository } from "../../app/infrastrcture/db/drizzle/repositories/host.drizzle.repository";
+import type { SerializedHost } from "@domain/entities/user/host.entity";
+import type { TestDatabase } from "../setup/database";
+
+// !collapse(1:23) collapsed
+// Collapsed hostGenerators
+const hostGenerators = {
+  phoneNumber: () => {
+    const exchange = faker.number.int({ min: 100, max: 999 });
+    const number = faker.number.int({ min: 1000, max: 9999 });
+    return parseInt(`555${exchange}${number}`);
+  },
+  profileImage: () => {
+    const fileName = faker.system.fileName({ extensionCount: 0 });
+    const ext = faker.helpers.arrayElement(["jpg", "jpeg", "png", "webp"]);
+    return `/profiles/${fileName}.${ext}`;
+  },
+  dob: () => {
+    const now = new Date();
+    const minAge = 18;
+    const maxAge = 65;
+    const birthYear = now.getFullYear() - faker.number.int({ min: minAge, max: maxAge });
+    return faker.date.between({
+      from: new Date(birthYear, 0, 1),
+      to: new Date(birthYear, 11, 31)
+    });
+  }
+};
+
+// !collapse(1:8) collapsed
+// Collapsed addressGenerators
+const addressGenerators = {
+  country: () => faker.location.country(),
+  city: () => faker.location.city(),
+  state: () => faker.location.state({ abbreviated: true }),
+  zipCode: () => faker.location.zipCode(),
+  address: () => faker.location.streetAddress()
+};
+
+// !collapse(1:33) collapsed
+// Collapsed TestHostSchema
+export const TestHostSchema = S.Struct({
+  id: HostSchema.fields.id.annotations(refined.uuid()),
+  createdAt: HostSchema.fields.createdAt.members[0].annotations(refined.dateTime.past()),
+  updatedAt: HostSchema.fields.updatedAt.members[0].annotations(refined.dateTime.recent()),
+  userId: HostSchema.fields.userId.annotations(refined.uuid()),
+  dob: S.encodedBoundSchema(HostSchema.fields.dob as any).annotations(
+    refined.optional.value(hostGenerators.dob, 0.8)
+  ),
+  phoneNumber: S.encodedBoundSchema(HostSchema.fields.phoneNumber as any).annotations(
+    refined.optional.value(hostGenerators.phoneNumber, 0)
+  ),
+  profileImage: S.encodedBoundSchema(HostSchema.fields.profileImage as any).annotations(
+    refined.optional.string(hostGenerators.profileImage, 0.7)
+  ),
+  address: S.Struct({
+    country: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.country, 0.9)
+    ),
+    city: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.city, 0.9)
+    ),
+    state: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.state, 0.8)
+    ),
+    zipCode: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.zipCode, 0.8)
+    ),
+    address: S.encodedBoundSchema(S.optional(S.String) as any).annotations(
+      refined.optional.string(addressGenerators.address, 0.9)
+    )
+  })
+});
+
+// !collapse(1:14) collapsed
+// Collapsed generateTestHost
+export const generateTestHost = (overrides: Partial<SerializedHost> = {}): SerializedHost => {
+  const arbitrary = Arbitrary.make(TestHostSchema);
+  const sample = FastCheck.sample(arbitrary, 1)[0];
+
+  if (!sample) {
+    throw new Error("Failed to generate test host data");
+  }
+
+  return {
+    ...sample,
+    ...overrides
+  } as SerializedHost;
+};
+
+// !collapse(1:19) collapsed
+// Collapsed createCompleteProfileHost helpers
+export const createCompleteProfileHost = (overrides: Partial<SerializedHost> = {}): SerializedHost => {
+  const baseHost = generateTestHost();
+
+  return {
+    ...baseHost,
+    dob: hostGenerators.dob(),
+    phoneNumber: hostGenerators.phoneNumber(),
+    profileImage: `/profiles/${faker.system.fileName({ extensionCount: 0 })}.jpg`,
+    address: {
+      country: faker.location.country(),
+      city: faker.location.city(),
+      state: faker.location.state({ abbreviated: true }),
+      zipCode: faker.location.zipCode(),
+      address: faker.location.streetAddress()
+    },
+    ...overrides
+  };
+};
+
+// !collapse(1:19) collapsed
+// Collapsed createMinimalHost helpers
+export const createMinimalHost = (overrides: Partial<SerializedHost> = {}): SerializedHost => {
+  const baseHost = generateTestHost();
+
+  return {
+    ...baseHost,
+    dob: null,
+    phoneNumber: null,
+    profileImage: null,
+    address: {
+      country: null,
+      city: null,
+      state: null,
+      zipCode: null,
+      address: null
+    },
+    ...overrides
+  };
+};
+
+// !collapse(1:30) collapsed
+// Collapsed database integration
+export async function createTestHost(
+  db: TestDatabase["db"],
+  overrides: Partial<SerializedHost> = {}
+): Promise<typeof schema.hosts.$inferSelect> {
+  const baseHostData = {
+    ...generateTestHost(),
+    ...overrides
+  };
+
+  const hostData = {
+    ...baseHostData,
+    id: UUID.init(),
+    userId: (overrides.userId as UUID) || UUID.init(),
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  const hostEntity = await E.runPromise(Host.create(hostData));
+  const repository = new HostDrizzleRepository(db);
+  const dbData = await E.runPromise(repository.toDbSerialized(hostEntity));
+
+  const [insertedHost] = await db.insert(schema.hosts).values(dbData).returning();
+
+  if (!insertedHost) {
+    throw new Error("Failed to create test host");
+  }
+
+  return insertedHost;
+}
+
+// !mark(1:25) #22c55e
+/**
+ * Effect-based entity creation utilities for functional composition
+ */
+export const createTestHostEntity = (overrides: Partial<SerializedHost> = {}): E.Effect<Host, Error, never> => {
+  const hostData = { ...generateTestHost(), ...overrides };
+
+  return Host.create(hostData).pipe( // !callout[/Host\.create/] #22c55e Domain entity creation
+    E.mapError((error) => new Error(`Failed to create test entity: ${error}`)) // !callout[/E\.mapError/] #22c55e Transform domain errors to test errors
+  ) as E.Effect<Host, Error, never>;
+};
+
+export const createTestHostEntities = (
+  count: number,
+  overrides: Partial<SerializedHost> = {}
+): E.Effect<Host[], Error, never> => { // !callout[/Host\[\]/] #22c55e Array of entities
+  const hosts = generateTestHosts(count).map((host) => ({ ...host, ...overrides })); // !info[/generateTestHosts/] #22c55e Bulk generation helper
+
+  return E.all(hosts.map((data) => Host.create(data))).pipe( // !callout[/E\.all/] #22c55e Combine multiple Effects into single Effect
+    E.mapError((error) => new Error(`Failed to create test entities: ${error}`))
+  ) as E.Effect<Host[], Error, never>;
+};
+
+// Utility for generating multiple entities
+export const generateTestHosts = (count: number): SerializedHost[] => { // !callout[/generateTestHosts/] #22c55e Bulk generation utility
+  const arb = Arbitrary.make(TestHostSchema);
+  return FastCheck.sample(arb, count) as SerializedHost[]; // !info[/FastCheck\.sample\(arb, count\)/] #22c55e Generate multiple samples at once
+};
+```
+
+</ScrollyCoding>
+
+### Key Takeaways
+
+This approach ensures your test factories are maintainable, type-safe, and produce realistic test data that closely mirrors production scenarios across all your domain entities.
+
+## Essential Entity Testing Patterns
+
+Now that we have robust test factories, let's explore essential testing patterns for domain entities. This section demonstrates a basic but comprehensive testing approach - a condensed version of what would typically be a much larger test suite. We'll focus on the key testing concepts every domain entity should cover.
+
+<ScrollyCoding>
+
+## !!steps Basic Entity Creation & Validation
+
+Start with fundamental entity creation tests using your factory. Test both successful creation and validation failures to ensure your domain rules are properly enforced.
+
+```typescript !
+import { describe, expect, it } from "vitest";
+import { Host } from "@domain/entities/user/host.entity";
+import { HostValidationError } from "@domain/entities/user/host.error";
+import { generateTestHost, createTestHostEntity } from "../../../factories/host.factory";
+import { TestPatterns } from "../../../utils/test.helpers";
+
+describe("Host Entity - Essential Patterns", () => {
+  describe("Entity Creation", () => {
+    it("should create valid entities using factory", () => {
+      const hostData = generateTestHost({
+        userId: "550e8400-e29b-41d4-a716-446655440001",
+        phoneNumber: 5551234567
+      });
+
+      const host = TestPatterns.Effect.expectSuccess(Host.create(hostData)); // !callout[/TestPatterns\.Effect\.expectSuccess/] #22c55e Unwrap Effect success values safely
+
+      expect(host).toBeInstanceOf(Host);
+      expect(host.userId).toBe("550e8400-e29b-41d4-a716-446655440001");
+      
+      const phoneNumber = TestPatterns.Option.expectSome(host.phoneNumber); // !callout[/TestPatterns\.Option\.expectSome/] #22c55e Assert Option has value and extract it
+      expect(phoneNumber).toBe(5551234567);
+    });
+
+    it("should handle validation errors", () => {
+      const invalidData = generateTestHost({
+        phoneNumber: 123 // Invalid - too short
+      });
+
+      const error = TestPatterns.Effect.expectFailure( // !callout[/expectFailure/] #22c55e Test validation failures safely
+        Host.create(invalidData), 
+        HostValidationError
+      );
+      
+      expect(error).toBeInstanceOf(HostValidationError);
+    });
+  });
+```
+
+## !!steps Factory Constraint Testing
+
+Validate that your factory generates data within expected constraints. This ensures your test data remains realistic and doesn't accidentally violate domain rules.
+
+```typescript !
+  describe("Factory Validation", () => {
+    it("should generate data within domain constraints", () => {
+      TestPatterns.Factory.testFactoryConstraints( // !callout[/testFactoryConstraints/] #22c55e Automated constraint validation
+        () => generateTestHost(),
+        [
+          {
+            name: "valid phone format when present",
+            validator: (host) => 
+              host.phoneNumber === null || 
+              /^\d{10}$/.test(host.phoneNumber.toString()), // !info[/^\d{10}$/] #22c55e Regex validation for business rules
+            message: "Phone should be null or 10 digits"
+          },
+          {
+            name: "valid image extension when present", 
+            validator: (host) =>
+              host.profileImage === null ||
+              /\.(jpg|jpeg|png|gif)$/i.test(host.profileImage), // !callout[/\.(jpg|jpeg|png|gif)$/] #22c55e Domain-specific file validation
+            message: "Profile image should have valid extension"
+          },
+          {
+            name: "realistic date constraints",
+            validator: (host) => 
+              host.dob === null || 
+              (host.dob instanceof Date && host.dob < new Date()), // !warning[/< new Date()/] #22c55e Ensure past dates only
+            message: "Date of birth should be in the past"
+          }
+        ],
+        25 // !info[/25/] #22c55e Test with multiple samples
+      );
+    });
+
+    it("should generate unique entities", () => {
+      TestPatterns.Factory.testFactoryUniqueness( // !callout[/testFactoryUniqueness/] #22c55e Prevent duplicate test data
+        () => generateTestHost(),
+        (host) => host.id,
+        20
+      );
+    });
+  });
+```
+
+## !!steps Option Type Handling
+
+Test optional fields thoroughly since they're common in domain entities. Verify both presence and absence scenarios work correctly.
+
+```typescript !
+  describe("Optional Field Handling", () => {
+    it("should handle present optional values", () => {
+      const hostData = generateTestHost({
+        phoneNumber: 5551234567,
+        profileImage: "profile.jpg",
+        dob: new Date("1990-01-01")
+      });
+
+      const host = TestPatterns.Effect.expectSuccess(Host.create(hostData));
+
+      TestPatterns.Option.expectSomeWith( // !callout[/expectSomeWith/] #22c55e Test Option value with assertion
+        host.phoneNumber,
+        (phone) => phone === 5551234567,
+        "Phone should match expected value"
+      );
+
+      const image = TestPatterns.Option.expectSome(host.profileImage);
+      expect(image).toBe("profile.jpg");
+
+      const age = TestPatterns.Option.expectSome(host.age); // !info[/host.age/] #22c55e Computed property from dob
+      expect(age).toBeGreaterThan(30);
+    });
+
+    it("should handle missing optional values", () => {
+      const hostData = generateTestHost({
+        phoneNumber: null,
+        profileImage: null, 
+        dob: null
+      });
+
+      const host = TestPatterns.Effect.expectSuccess(Host.create(hostData));
+
+      TestPatterns.Option.expectNone(host.phoneNumber); // !callout[/expectNone/] #22c55e Assert Option is None
+      TestPatterns.Option.expectNone(host.profileImage);
+      TestPatterns.Option.expectNone(host.dob);
+      TestPatterns.Option.expectNone(host.age);
+    });
+  });
+```
+
+## !!steps Computed Properties & Business Logic
+
+Test computed properties and business logic methods. These often contain complex domain rules that need thorough validation.
+
+```typescript !
+  describe("Business Logic", () => {
+    it("should calculate computed properties correctly", () => {
+      const host = TestPatterns.Effect.expectSuccess(
+        Host.create(generateTestHost({
+          userId: "test-user-123",
+          dob: new Date("1990-01-01"),
+          phoneNumber: 5551234567,
+          profileImage: "complete.jpg"
+        }))
+      );
+
+      TestPatterns.Entity.testComputedProperties(host, [ // !callout[/testComputedProperties/] #22c55e Systematic property testing
+        {
+          name: "displayName",
+          getter: (h) => h.displayName,
+          expected: "Host test-user-123" // !info[/expected:/] #22c55e Test computed display logic
+        },
+        {
+          name: "hasCompleteProfile", 
+          getter: (h) => h.hasCompleteProfile,
+          expected: true // !callout[/true/] #22c55e All required fields present
+        }
+      ]);
+    });
+
+    it("should handle profile update business logic", () => {
+      const host = TestPatterns.Effect.expectSuccess(
+        Host.create(generateTestHost({
+          phoneNumber: null,
+          profileImage: null,
+          dob: null
+        }))
+      );
+
+      expect(host.hasCompleteProfile).toBe(false);
+
+      const updatedHost = TestPatterns.Effect.expectSuccess( // !callout[/updateProfile/] #22c55e Test domain methods
+        host.updateProfile({
+          dob: new Date("1985-03-15"),
+          phoneNumber: 5559876543,
+          profileImage: "updated.jpg"
+        })
+      );
+
+      expect(updatedHost.hasCompleteProfile).toBe(true); // !info[/toBe(true)/] #22c55e Business rule: complete when all fields present
+
+      const newPhone = TestPatterns.Option.expectSome(updatedHost.phoneNumber);
+      expect(newPhone).toBe(5559876543);
+    });
+  });
+```
+
+## !!steps Factory Override Testing
+
+Test factory overrides systematically to ensure your factories behave predictably when customizing test data for specific scenarios.
+
+```typescript !
+  describe("Factory Overrides", () => {
+    it("should apply overrides correctly", () => {
+      const overrideScenarios = [
+        {
+          name: "Complete Profile Host",
+          overrides: {
+            phoneNumber: 5551234567,
+            profileImage: "complete.jpg",
+            dob: new Date("1990-01-01")
+          },
+          validator: (host: Host) => {
+            expect(host.hasCompleteProfile).toBe(true); // !callout[/hasCompleteProfile/] #22c55e Test business rule
+            
+            const phone = TestPatterns.Option.expectSome(host.phoneNumber);
+            expect(phone).toBe(5551234567);
+          }
+        },
+        {
+          name: "Minimal Profile Host",
+          overrides: {
+            phoneNumber: null,
+            profileImage: null,
+            dob: null
+          },
+          validator: (host: Host) => {
+            expect(host.hasCompleteProfile).toBe(false); // !warning[/toBe(false)/] #22c55e Verify incomplete profile logic
+            TestPatterns.Option.expectNone(host.phoneNumber);
+          }
+        },
+        {
+          name: "Specific Address Host", 
+          overrides: {
+            address: {
+              country: "United States",
+              city: "New York", 
+              state: "NY",
+              zipCode: "10001",
+              address: "123 Main St"
+            }
+          },
+          validator: (host: Host) => {
+            expect(host.address.country).toBe("United States"); // !info[/address.country/] #22c55e Test nested value objects
+            expect(host.address.city).toBe("New York");
+          }
+        }
+      ];
+
+      TestPatterns.Factory.testFactoryOverrides( // !callout[/testFactoryOverrides/] #22c55e Automated override testing
+        (overrides) => generateTestHost(overrides),
+        (data) => Host.create(data),
+        overrideScenarios
+      );
+    });
+  });
+```
+
+## !!steps Error Handling & Edge Cases
+
+Test validation errors and edge cases to ensure your domain boundaries are properly enforced.
+
+```typescript !
+  describe("Error Scenarios", () => {
+    it("should validate domain constraints", () => {
+      const errorScenarios = [
+        {
+          name: "invalid phone - too short",
+          data: generateTestHost({ phoneNumber: 123 }),
+          errorType: HostValidationError
+        },
+        {
+          name: "invalid phone - too long", 
+          data: generateTestHost({ phoneNumber: 12345678901 }),
+          errorType: HostValidationError
+        },
+        {
+          name: "invalid image extension",
+          data: generateTestHost({ profileImage: "document.pdf" }), // !warning[/document.pdf/] #22c55e Wrong file type
+          errorType: HostValidationError
+        }
+      ];
+
+      errorScenarios.forEach(({ name, data, errorType }) => {
+        const error = TestPatterns.Effect.expectFailure( // !callout[/expectFailure/] #22c55e Test each validation rule
+          Host.create(data),
+          errorType
+        );
+        expect(error).toBeInstanceOf(errorType);
+      });
+    });
+
+    it("should handle edge cases gracefully", () => {
+      // Test future dates are rejected
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 1);
+
+      const futureDateHost = generateTestHost({ dob: futureDate });
+      
+      TestPatterns.Effect.expectFailure( // !info[/expectFailure/] #22c55e Future dates should be invalid
+        Host.create(futureDateHost),
+        HostValidationError
+      );
+    });
+  });
+```
+
+## !!steps Serialization & Data Integrity
+
+Test serialization round-trips and data integrity to ensure entities can be safely stored and retrieved.
+
+```typescript !
+  describe("Data Integrity", () => {
+    it("should maintain data through serialization", async () => {
+      const host = TestPatterns.Effect.expectSuccess(
+        Host.create(generateTestHost({
+          phoneNumber: 5551234567,
+          profileImage: "test.jpg",
+          dob: new Date("1990-01-01")
+        }))
+      );
+
+      await TestPatterns.Entity.testSerializationRoundTrip( // !callout[/testSerializationRoundTrip/] #22c55e Automated serialization testing
+        host,
+        (h) => h.serialized(), // !info[/serialized()/] #22c55e Entity serialization method
+        (data) => Host.create(data), // !callout[/Host.create/] #22c55e Deserialization via constructor
+        (original, deserialized) => { // !warning[/comparison function/] #22c55e Custom equality check
+          return (
+            original.id === deserialized.id &&
+            original.userId === deserialized.userId &&
+            TestPatterns.Option.equals(original.phoneNumber, deserialized.phoneNumber)
+          );
+        }
+      );
+    });
+
+    it("should handle async entity creation", async () => {
+      const host = await TestPatterns.Effect.expectAsyncSuccess( // !callout[/expectAsyncSuccess/] #22c55e Test async Effect operations
+        createTestHostEntity()
+      );
+      
+      expect(host).toBeInstanceOf(Host);
+      expect(host.displayName).toContain("Host");
+    });
+  });
+
+  describe("Batch Operations", () => {
+    it("should handle multiple entities consistently", () => {
+      const hosts = Array.from({ length: 10 }, () => 
+        TestPatterns.Effect.expectSuccess( // !info[/Array.from/] #22c55e Generate multiple entities
+          Host.create(generateTestHost())
+        )
+      );
+
+      expect(hosts).toHaveLength(10);
+      
+      hosts.forEach((host) => {
+        expect(host).toBeInstanceOf(Host);
+        expect(typeof host.hasCompleteProfile).toBe("boolean"); // !callout[/hasCompleteProfile/] #22c55e Consistent business logic
+        expect(host.displayName).toMatch(/^Host /); // !info[/Match pattern/] #22c55e Consistent computed properties
+      });
+
+      // Test uniqueness across batch
+      const ids = hosts.map(h => h.id);
+      const uniqueIds = new Set(ids);
+      expect(uniqueIds.size).toBe(hosts.length); // !warning[/uniqueIds.size/] #22c55e All entities should be unique
+    });
+  });
+});
+```
+
+</ScrollyCoding>
+
+## Testing Strategy Summary
+
+### Essential Test Categories
+
+**Entity Creation & Validation**: Test successful creation and validation failures to ensure domain rules are enforced. Use factory overrides to test specific scenarios.
+
+**Factory Constraints**: Validate that test factories generate realistic data within domain boundaries. Test uniqueness and constraint compliance automatically.
+
+**Option Type Handling**: Thoroughly test optional fields in both present and absent states. Use specialized helpers for safe Option unwrapping.
+
+**Business Logic**: Test computed properties, domain methods, and business rules. Focus on the core logic that makes your entity valuable.
+
+**Error Scenarios**: Test validation errors and edge cases systematically. Ensure domain boundaries are properly enforced.
+
+**Data Integrity**: Test serialization round-trips and async operations. Verify entities maintain consistency through storage and retrieval.
+
+### Key Principles
+
+- **Use Type-Safe Helpers**: Leverage `TestPatterns` utilities for safe Effect and Option handling
+- **Test Business Value**: Focus on domain logic, computed properties, and business rules  
+- **Validate Constraints**: Ensure factories generate realistic data and entities enforce boundaries
+- **Systematic Coverage**: Use automated helpers for constraint validation and override testing
+- **Error Handling**: Test both success and failure scenarios comprehensively
+
+This basic testing approach provides comprehensive coverage while remaining maintainable and focused on the essential patterns every domain entity should validate.
