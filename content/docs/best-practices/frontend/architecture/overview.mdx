@@ -1,0 +1,291 @@
+---
+title: Overview
+description: A comprehensive guide to frontend architecture and design patterns.
+---
+
+import { File, Folder, Files } from 'fumadocs-ui/components/files';
+
+At Carbonteq, we follow a modular and component-based architecture for our frontend applications. The patterns and practices described here are based on experience and may not work for every large-scale application. Take the parts that resonate with you or you think will help you get things more organized in your React project.
+
+## Project Organization
+
+Our frontend projects follow a well-structured directory organization that promotes separation of concerns and reusability:
+
+<Files>
+  <Folder name="src" defaultOpen>
+    <Folder name="assets" defaultOpen>
+      <File name="images/" />
+      <File name="styles/" />
+    </Folder>
+    <Folder name="components" defaultOpen>
+      <Folder name="primitives" defaultOpen>
+        <Folder name="derived" defaultOpen>
+          <File name="TopBorderButton/" />
+        </Folder>
+        <File name="Button/" />
+        <File name="Input/" />
+        <File name="Card/" />
+        <File name="Typography/" />
+      </Folder>
+      <Folder name="composites" defaultOpen>
+        <Folder name="common" defaultOpen>
+          <File name="Header/" />
+          <File name="Footer/" />
+        </Folder>
+        <File name="AddTodoForm/" />
+        <File name="TodoList/" />
+        <File name="TodoItem/" />
+      </Folder>
+    </Folder>
+    <Folder name="containers" defaultOpen>
+      <File name="TodoListContainer/" />
+    </Folder>
+    <Folder name="context" defaultOpen>
+      <File name="AuthContext.tsx" />
+      <File name="ThemeContext.tsx" />
+    </Folder>
+    <Folder name="hooks" defaultOpen>
+      <File name="useAuth.ts" />
+      <File name="useForm.ts" />
+    </Folder>
+    <Folder name="pages" defaultOpen>
+      <File name="Home/" />
+      <File name="Login/" />
+      <File name="Dashboard/" />
+    </Folder>
+    <Folder name="services" defaultOpen>
+      <File name="api.ts" />
+      <File name="auth.ts" />
+    </Folder>
+    <Folder name="utils" defaultOpen>
+      <File name="helpers.ts" />
+      <File name="constants.ts" />
+    </Folder>
+  </Folder>
+  <File name="package.json" />
+  <File name="tsconfig.json" />
+</Files>
+
+The important part here is not to make the directory name a hard and fast rule but to follow a neat organization that anyone in the codebase can understand.
+
+## Understanding the Codebase
+
+Each directory in our structure plays a crucial role in creating sufficient abstraction layers between the Presentation Layer, Application Layer, and the Data fetched from backend APIs:
+
+- Starting from the Presentation Layer, atomic and reusable components should be implemented and saved inside the components directory. Container is a higher-level component which comprises of sub-components and its only work is to fetch the data and pass to the corresponding sub-component. (data fetching must be done by calling a service).
+- In services directory, services like authentication, fetching/updating data etc. All interaction with the backend takes place here. It is a best practice to create an abstraction layer over the API client library being used e.g. Axios, it will be easier in future to replace Axios with anyother API client library.
+- In Pages directory, Login page, Home page, About page etc. are present and loaded according to the route.
+- Context/Store directory stores the data and state of the application, whenever any service is called which returns some useful data, it is stored in the context/store directory which can be accessed later the container components to futher pass the data.
+
+### Components Layer
+
+Our component architecture is organized into two distinct categories: `primitives` and `composites`.
+
+**Primitives** are the fundamental building blocks of our UI. They are either native HTML elements or components from a UI library like Ant Design or Material UI. Most primitive components, which are mapped directly from a UI library to our application's design system, are placed flat inside the `primitives` directory.
+
+However, some primitives are **derived**. Derived components are used multiple times in the design system, but it doesn't make sense to create a variant for them. A good example is a button with a top border being used at multiple places in the UI. Its primitive (`Button`) exists, but creating a new variant for it doesn't make sense. In such cases, we create a `TopBorderButton` and place it in a `derived` folder inside `primitives`.
+
+**Composites** are components built by combining one or more primitives. They encapsulate business logic and are specific to our application's features. Composites are organized into:
+1.  **common**: Components that are reused across multiple features of the application (e.g., a generic `Modal` or `PageLayout`).
+2.  Feature-specific components: These are components that belong to a particular feature, like a `TodoItem` or `TodoList` in a todo application.
+
+Here is an example structure for a todo application:
+
+<Files>
+  <Folder name="components" defaultOpen>
+    <Folder name="primitives" defaultOpen>
+      <File name="Button/" />
+      <File name="Input/" />
+      <File name="Checkbox/" />
+      <Folder name="derived" defaultOpen>
+        <File name="TopBorderButton/" />
+      </Folder>
+    </Folder>
+    <Folder name="composites" defaultOpen>
+      <Folder name="common" defaultOpen>
+        <File name="Modal/" />
+      </Folder>
+      <Folder name="todo" defaultOpen>
+        <File name="TodoItem/" />
+        <File name="TodoList/" />
+        <File name="AddTodoForm/" />
+      </Folder>
+    </Folder>
+  </Folder>
+</Files>
+
+In this example:
+- `Button`, `Input`, `Checkbox` are primitives from a UI library.
+- `TopBorderButton` is a derived primitive.
+- `Modal` is a common composite component that can be used anywhere in the app.
+- `TodoItem`, `TodoList`, and `AddTodoForm` are composite components specific to the todo feature. They would be composed of primitives like `Button`, `Input`, and `Checkbox`.
+
+This structure helps us maintain a clear separation between generic, reusable UI elements and feature-specific, complex components.
+
+### Containers Layer
+
+Containers are higher-level components that:
+- Comprise of sub-components
+- Handle data fetching through services
+- Pass data to corresponding sub-components
+- Manage the state and logic for a group of components
+- Act as a bridge between the data layer and presentation layer
+
+Example container structure for a todo app:
+<Files>
+  <Folder name="containers" defaultOpen>
+    <Folder name="TodoListContainer" defaultOpen>
+      <File name="TodoListContainer.tsx" />
+      <File name="TodoListContainer.styles.ts" />
+      <File name="TodoListContainer.test.tsx" />
+      <File name="index.ts" />
+    </Folder>
+  </Folder>
+</Files>
+
+Containers follow the container/presentational pattern, where:
+- Containers handle the data and logic
+- Presentational components (in the components directory) handle the UI
+- This separation makes components more reusable and easier to test
+
+### Common Modules
+
+One advantage of React being un-opinionated is it doesn't care how you divide your modules. When developing a page in a React app, consider dividing it into modular pieces. This will help you reduce the complexity and create structures that are open for reusable or shared across the application.
+
+Shareable code in React app should be divided under its own domain. A common module can be reusable common composite components, custom hooks, business logic, constants, and utility functions. These reusable pieces are shared across the application to be used on more than one page component.
+
+### Context Layer
+
+The context directory manages global state using React Context:
+- Provides state management for application-wide data
+- Implements custom hooks for state access
+- Follows the principle of separation of concerns
+
+### Hooks Layer
+
+Custom hooks encapsulate reusable logic and state management:
+- Follow the "use" naming convention
+- Are pure functions that can be composed
+- Handle their own state and side effects
+
+Example of a custom hook for managing todos:
+
+```typescript
+import { useState } from 'react';
+
+interface Todo {
+  id: number;
+  text: string;
+  completed: boolean;
+}
+
+export const useTodos = (initialTodos: Todo[] = []) => {
+  const [todos, setTodos] = useState<Todo[]>(initialTodos);
+
+  const addTodo = (text: string) => {
+    const newTodo: Todo = {
+      id: Date.now(),
+      text,
+      completed: false,
+    };
+    setTodos([...todos, newTodo]);
+  };
+
+  const toggleTodo = (id: number) => {
+    setTodos(
+      todos.map(todo =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      )
+    );
+  };
+
+  return {
+    todos,
+    addTodo,
+    toggleTodo,
+  };
+};
+```
+
+The custom hook `useTodos` above encapsulates the logic for managing the todo list. It handles its own state and exposes methods to modify that state. This hook can be used in the `TodoListContainer` to manage the application's data.
+
+### Pages Layer
+
+Pages represent the main routes of the application:
+- Compose components and hooks
+- Handle routing logic
+- Manage page-specific state
+
+### Services Layer
+
+Services handle external communication and data fetching:
+- Abstract API calls
+- Implement error handling
+- Provide type-safe interfaces
+
+## Best Practices
+
+### Separation of Concerns
+
+The /pages directory will contain the UI for most of the application and the structure of each page in the form of React components. These components are naturally coupled with the business logic they represent. However, avoid unnecessary complexity in a UI component by separating the business logic from it.
+
+One way to separate the UI and the logic is to:
+- Create a custom hook
+- Use presentational/container components pattern
+
+### Avoiding Single Context
+
+When you pass props from a parent to a child component, it can be as simple as passing them from one to another. However, the complexity arises when there are many components in between. This creates an inconvenient way to pass props.
+
+There are multiple ways to pass data through the component tree without prop drilling:
+- State managing libraries like redux, recoil etc
+- React Context
+- HOCs
+
+### Composition over Inheritance
+
+React recommends use of Composition over Inheritance. Everything in React is a component, and it follows a strong component based model. This is one of the primary reasons that composition is a better approach than inheritance for code reuse.
+
+Multiple approaches that use composition:
+- Higher Order Components
+- State management libraries
+
+### Absolute Imports
+
+It makes it a lot easier to import components within the project and also, at the same time moving files without the need to change the import statements. It also helps in tree shaking.
+
+## Resources
+
+- [React Documentation](https://reactjs.org/docs/getting-started.html)
+- [React Patterns](https://reactpatterns.com/)
+- [React Hooks Documentation](https://reactjs.org/docs/hooks-intro.html)
+- [Using Custom Hooks to Reduce Component Complexity](https://medium.com/swlh/using-custom-hooks-to-reduce-component-complexity-fcb4563a9ffe)
+
+## Glossary
+
+### Component
+A reusable piece of UI that can contain its own logic and state. Components should be:
+- Single responsibility
+- Reusable
+- Well-documented
+- Properly typed
+
+### Custom Hook
+A function that starts with "use" and can call other hooks. Custom hooks:
+- Encapsulate reusable logic
+- Can manage their own state
+- Follow React's rules of hooks
+
+### Context
+A way to pass data through the component tree without prop drilling. Context should be used for:
+- Global state management
+- Theme data
+- User authentication
+- Other application-wide concerns
+
+### Service
+A module that handles external communication and data fetching. Services should:
+- Abstract API calls
+- Handle errors
+- Provide type-safe interfaces
+- Be easily testable 
