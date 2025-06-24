@@ -8,6 +8,7 @@ import ContentCard from '@/components/ui/ContentCard';
 import Aside from '@/components/ui/Aside';
 import { Code } from '@/components/ui/Code';
 import { BestPractice } from '@/components/ui/BestPractice';
+import { Layers } from '@/components/ui/design-system/Layers';
 
 // use this function to get MDX components, you will need it for rendering MDX
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
@@ -22,5 +23,6 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ...components,
     Code,
     BestPractice,
+    Layers,
   };
 }

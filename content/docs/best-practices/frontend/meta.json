@@ -4,8 +4,9 @@
   "pages": [
     "overview",
     "principles",
-    "architecture", 
+    "architecture",
     "stack_tooling",
+    "design-system-philosophy",
     "..."
   ]
-} 
+}
