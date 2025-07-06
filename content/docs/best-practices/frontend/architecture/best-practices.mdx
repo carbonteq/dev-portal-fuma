@@ -1,0 +1,743 @@
+---
+title: Best Practices
+description: Frontend architecture best practices for React applications.
+---
+
+import { File, Folder, Files } from 'fumadocs-ui/components/files';
+
+## useEffect Usage Patterns
+
+<BestPractice title="useEffect Usage Patterns">
+
+Use useEffect judiciously and avoid overusing it for non-reactive logic.
+
+## !dont overuse-useeffect
+
+**Use useEffect for every side effect or state update.** This creates:
+- Unnecessary re-renders and performance issues
+- Complex dependency arrays that are hard to manage
+- Race conditions and stale closure bugs
+- Difficult debugging with cascading effects
+
+```typescript !example
+// Bad: Overusing useEffect for derived state
+function UserProfile({ userId }) {
+  const [user, setUser] = useState(null);
+  const [displayName, setDisplayName] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Bad: useEffect for derived state
+  useEffect(() => {
+    if (user) {
+      setDisplayName(`${user.firstName} ${user.lastName}`);
+    }
+  }, [user]);
+  
+  // Bad: useEffect for computed values
+  useEffect(() => {
+    setIsAdmin(user?.role === 'admin');
+  }, [user]);
+  
+  // Bad: useEffect for event handlers
+  useEffect(() => {
+    const handleClick = () => {
+      console.log('User clicked');
+    };
+    
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [user]); // Unnecessary dependency
+  
+  return (
+    <div>
+      <h1>{displayName}</h1>
+      {isAdmin && <AdminPanel />}
+    </div>
+  );
+}
+
+// Bad: useEffect for synchronous calculations
+function ShoppingCart({ items }) {
+  const [total, setTotal] = useState(0);
+  
+  useEffect(() => {
+    const newTotal = items.reduce((sum, item) => sum + item.price, 0);
+    setTotal(newTotal);
+  }, [items]); // Should be computed during render
+  
+  return <div>Total: ${total}</div>;
+}
+```
+
+## !do targeted-useeffect
+
+**Use useEffect only for genuine side effects and async operations.** This ensures:
+- **Better performance** with fewer unnecessary re-renders
+- **Cleaner code** with direct state derivation
+- **Easier debugging** with predictable data flow
+- **Proper separation** between reactive and non-reactive logic
+
+```typescript !example
+// Good: Derived state calculated during render
+function UserProfile({ userId }) {
+  const [user, setUser] = useState(null);
+  
+  // Good: Derived state - no useEffect needed
+  const displayName = user ? `${user.firstName} ${user.lastName}` : '';
+  const isAdmin = user?.role === 'admin';
+  
+  // Good: useEffect only for data fetching
+  useEffect(() => {
+    if (userId) {
+      fetchUser(userId).then(setUser);
+    }
+  }, [userId]);
+  
+  // Good: Event handlers defined outside useEffect
+  const handleUserAction = useCallback(() => {
+    console.log('User action triggered');
+  }, []);
+  
+  return (
+    <div>
+      <h1>{displayName}</h1>
+      {isAdmin && <AdminPanel />}
+      <button onClick={handleUserAction}>Action</button>
+    </div>
+  );
+}
+
+// Good: Synchronous calculations during render
+function ShoppingCart({ items }) {
+  // Good: Computed during render, no useEffect needed
+  const total = items.reduce((sum, item) => sum + item.price, 0);
+  
+  return <div>Total: ${total}</div>;
+}
+
+// Good: useEffect for genuine side effects
+function DataSync({ data }) {
+  useEffect(() => {
+    // Good: Side effect - syncing with external system
+    const syncData = async () => {
+      try {
+        await api.sync(data);
+      } catch (error) {
+        console.error('Sync failed:', error);
+      }
+    };
+    
+    syncData();
+  }, [data]);
+  
+  return <div>Data synced</div>;
+}
+```
+
+</BestPractice>
+
+## Ref Usage Patterns
+
+<BestPractice title="Ref Usage Patterns">
+
+Use refs for non-reactive updates and DOM manipulation instead of state when re-renders aren't needed.
+
+## !dont reactive-refs
+
+**Use state for all mutable values even when re-renders aren't needed.** This causes:
+- Unnecessary re-renders for non-visual updates
+- Performance issues with frequent updates
+- Complex state management for simple values
+- Difficult optimization with React.memo
+
+```typescript !example
+// Bad: Using state for non-reactive values
+function Timer() {
+  const [count, setCount] = useState(0);
+  const [intervalId, setIntervalId] = useState(null); // Causes re-render
+  
+  const startTimer = () => {
+    const id = setInterval(() => {
+      setCount(prev => prev + 1);
+    }, 1000);
+    setIntervalId(id); // Unnecessary re-render
+  };
+  
+  const stopTimer = () => {
+    if (intervalId) {
+      clearInterval(intervalId);
+      setIntervalId(null); // Unnecessary re-render
+    }
+  };
+  
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={startTimer}>Start</button>
+      <button onClick={stopTimer}>Stop</button>
+    </div>
+  );
+}
+
+// Bad: Using state for tracking previous values
+function UserList({ users }) {
+  const [prevUsers, setPrevUsers] = useState(users);
+  
+  useEffect(() => {
+    if (users !== prevUsers) {
+      console.log('Users changed');
+      setPrevUsers(users); // Causes unnecessary re-render
+    }
+  }, [users, prevUsers]);
+  
+  return (
+    <div>
+      {users.map(user => (
+        <div key={user.id}>{user.name}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+## !do non-reactive-refs
+
+**Use refs for values that don't need to trigger re-renders.** This provides:
+- **Better performance** with fewer unnecessary re-renders
+- **Cleaner code** for non-visual state management
+- **Proper separation** between reactive and non-reactive data
+- **Easier optimization** with memoization
+
+```typescript !example
+// Good: Using ref for non-reactive values
+function Timer() {
+  const [count, setCount] = useState(0);
+  const intervalRef = useRef(null); // No re-render when changed
+  
+  const startTimer = () => {
+    intervalRef.current = setInterval(() => {
+      setCount(prev => prev + 1);
+    }, 1000);
+  };
+  
+  const stopTimer = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+  
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={startTimer}>Start</button>
+      <button onClick={stopTimer}>Stop</button>
+    </div>
+  );
+}
+
+// Good: Using ref for tracking previous values
+function UserList({ users }) {
+  const prevUsersRef = useRef(users);
+  
+  useEffect(() => {
+    if (users !== prevUsersRef.current) {
+      console.log('Users changed');
+      prevUsersRef.current = users; // No re-render
+    }
+  }, [users]);
+  
+  return (
+    <div>
+      {users.map(user => (
+        <div key={user.id}>{user.name}</div>
+      ))}
+    </div>
+  );
+}
+
+// Good: Using ref for DOM manipulation
+function FocusInput() {
+  const inputRef = useRef(null);
+  
+  const focusInput = () => {
+    inputRef.current?.focus(); // Direct DOM manipulation
+  };
+  
+  return (
+    <div>
+      <input ref={inputRef} type="text" />
+      <button onClick={focusInput}>Focus Input</button>
+    </div>
+  );
+}
+
+// Good: Using ref for expensive calculations
+function ExpensiveCalculation({ data }) {
+  const memoizedRef = useRef(null);
+  const lastDataRef = useRef(null);
+  
+  // Only recalculate when data actually changes
+  if (data !== lastDataRef.current) {
+    memoizedRef.current = expensiveOperation(data);
+    lastDataRef.current = data;
+  }
+  
+  return <div>Result: {memoizedRef.current}</div>;
+}
+```
+
+</BestPractice>
+
+## Container/Presentational Patterns
+
+<BestPractice title="Container/Presentational Patterns">
+
+Separate data fetching and business logic from presentation components.
+
+## !dont mixed-concerns
+
+**Mix data fetching, business logic, and presentation in single components.** This creates:
+- Difficult testing with mixed concerns
+- Reduced component reusability
+- Complex components that are hard to maintain
+- Tight coupling between UI and data logic
+
+```typescript !example
+// Bad: Mixed concerns in single component
+function TodoList() {
+  const [todos, setTodos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  // Data fetching mixed with UI
+  useEffect(() => {
+    setLoading(true);
+    fetch('/api/todos')
+      .then(res => res.json())
+      .then(data => {
+        setTodos(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, []);
+  
+  // Business logic mixed with UI
+  const handleAddTodo = async (text) => {
+    const response = await fetch('/api/todos', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+    const newTodo = await response.json();
+    setTodos([...todos, newTodo]);
+  };
+  
+  // UI rendering mixed with logic
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  
+  return (
+    <div>
+      {todos.map(todo => (
+        <TodoItem key={todo.id} todo={todo} />
+      ))}
+    </div>
+  );
+}
+```
+
+## !do separated-concerns
+
+**Separate containers from presentational components.** This provides:
+- **Easy testing** with isolated concerns
+- **Reusable components** across different contexts
+- **Clear boundaries** between data and UI logic
+- **Maintainable code** with single responsibilities
+
+```typescript !example
+// Good: Container handles data and logic
+function TodoListContainer() {
+  const { todos, loading, error, addTodo } = useTodos();
+  
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage error={error} />;
+  
+  return (
+    <TodoList 
+      todos={todos}
+      onAddTodo={addTodo}
+    />
+  );
+}
+
+// Good: Presentational component focuses on UI
+function TodoList({ todos, onAddTodo }) {
+  return (
+    <div className="todo-list">
+      <AddTodoForm onSubmit={onAddTodo} />
+      {todos.map(todo => (
+        <TodoItem key={todo.id} todo={todo} />
+      ))}
+    </div>
+  );
+}
+
+// Good: Custom hook encapsulates business logic
+function useTodos() {
+  const [todos, setTodos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  const addTodo = useCallback(async (text) => {
+    const newTodo = await todoService.create(text);
+    setTodos(prev => [...prev, newTodo]);
+  }, []);
+  
+  return { todos, loading, error, addTodo };
+}
+```
+
+</BestPractice>
+
+## Custom Hook Patterns
+
+<BestPractice title="Custom Hook Patterns">
+
+Extract reusable logic into custom hooks following React patterns.
+
+## !dont inline-logic
+
+**Keep complex logic inline within components.** This results in:
+- Difficult testing of business logic
+- Reduced code reusability
+- Complex components with mixed concerns
+- Inconsistent logic patterns across components
+
+```typescript !example
+// Bad: Inline logic in component
+function TodoList() {
+  const [todos, setTodos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
+  // Complex logic mixed with component
+  const addTodo = (text) => {
+    const newTodo = {
+      id: Date.now(),
+      text,
+      completed: false,
+      createdAt: new Date(),
+    };
+    setTodos(prev => [...prev, newTodo]);
+  };
+  
+  const toggleTodo = (id) => {
+    setTodos(prev => 
+      prev.map(todo =>
+        todo.id === id 
+          ? { ...todo, completed: !todo.completed }
+          : todo
+      )
+    );
+  };
+  
+  const deleteTodo = (id) => {
+    setTodos(prev => prev.filter(todo => todo.id !== id));
+  };
+  
+  // UI mixed with logic
+  return (
+    <div>
+      {todos.map(todo => (
+        <div key={todo.id}>
+          <input 
+            type="checkbox"
+            checked={todo.completed}
+            onChange={() => toggleTodo(todo.id)}
+          />
+          <span>{todo.text}</span>
+          <button onClick={() => deleteTodo(todo.id)}>Delete</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## !do extracted-hooks
+
+**Extract logic into custom hooks with clear interfaces.** This enables:
+- **Reusable logic** across multiple components
+- **Easy testing** of business logic in isolation
+- **Clean components** focused on presentation
+- **Consistent patterns** with proper naming conventions
+
+```typescript !example
+// Good: Custom hook with clear interface
+function useTodos(initialTodos = []) {
+  const [todos, setTodos] = useState(initialTodos);
+  
+  const addTodo = useCallback((text) => {
+    const newTodo = {
+      id: Date.now(),
+      text,
+      completed: false,
+      createdAt: new Date(),
+    };
+    setTodos(prev => [...prev, newTodo]);
+  }, []);
+  
+  const toggleTodo = useCallback((id) => {
+    setTodos(prev => 
+      prev.map(todo =>
+        todo.id === id 
+          ? { ...todo, completed: !todo.completed }
+          : todo
+      )
+    );
+  }, []);
+  
+  const deleteTodo = useCallback((id) => {
+    setTodos(prev => prev.filter(todo => todo.id !== id));
+  }, []);
+  
+  return {
+    todos,
+    addTodo,
+    toggleTodo,
+    deleteTodo,
+  };
+}
+
+// Good: Clean component using custom hook
+function TodoList() {
+  const { todos, addTodo, toggleTodo, deleteTodo } = useTodos();
+  
+  return (
+    <div>
+      <AddTodoForm onSubmit={addTodo} />
+      {todos.map(todo => (
+        <TodoItem
+          key={todo.id}
+          todo={todo}
+          onToggle={toggleTodo}
+          onDelete={deleteTodo}
+        />
+      ))}
+    </div>
+  );
+}
+```
+
+</BestPractice>
+
+## Import Organization Patterns
+
+<BestPractice title="Import Organization Patterns">
+
+Use absolute imports with path aliases for clean module boundaries.
+
+## !dont relative-imports
+
+**Use relative imports for cross-directory navigation.** This creates:
+- Brittle dependencies with deep `../../../` paths
+- Difficult refactoring when moving files
+- Inconsistent import patterns
+- Poor tree-shaking optimization
+
+```typescript !example
+// Bad: Deep relative imports
+import { Button } from '../../../components/primitives/Button';
+import { TodoItem } from '../../composites/TodoItem';
+import { useTodos } from '../../../hooks/useTodos';
+import { todoService } from '../../../../services/todoService';
+
+// Bad: Mixing relative and absolute patterns
+import { Button } from '@/components/primitives/Button';     // Absolute
+import { TodoItem } from '../../composites/TodoItem';       // Relative
+import { useTodos } from '../../../hooks/useTodos';         // Relative
+
+// Bad: No import organization
+import { todoService } from '../../../../services/todoService';
+import React from 'react';
+import { Button } from '../../../components/primitives/Button';
+import { useState } from 'react';
+```
+
+## !do absolute-imports
+
+**Use absolute imports with configured path aliases.** This provides:
+- **Clean import paths** without deep navigation
+- **Easy refactoring** when restructuring code
+- **Consistent patterns** across the codebase
+- **Better tree-shaking** and build optimization
+
+```typescript !example
+// Good: Absolute imports with path aliases
+import React from 'react';
+import { Button } from '@/components/primitives/Button';
+import { TodoItem } from '@/components/composites/TodoItem';
+import { useTodos } from '@/hooks/useTodos';
+import { todoService } from '@/services/todoService';
+
+// Good: Organized import groups
+// External libraries
+import React, { useState, useEffect } from 'react';
+import { format } from 'date-fns';
+
+// Internal modules
+import { Button } from '@/components/primitives/Button';
+import { TodoItem } from '@/components/composites/TodoItem';
+import { useTodos } from '@/hooks/useTodos';
+
+// Local imports
+import { TodoListProps } from './TodoList.types';
+import './TodoList.styles.css';
+```
+
+</BestPractice>
+
+
+## Composition Patterns
+
+<BestPractice title="Composition Patterns">
+
+Favor composition over inheritance for component reusability.
+
+## !dont inheritance-based
+
+**Use inheritance patterns for component reuse.** This creates:
+- Tight coupling between parent and child classes
+- Complex inheritance hierarchies
+- Difficult testing with deep class structures
+- Limited flexibility for component composition
+
+```typescript !example
+// Bad: Inheritance-based components
+class BaseComponent extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { loading: false };
+  }
+  
+  setLoading(loading) {
+    this.setState({ loading });
+  }
+  
+  render() {
+    return null; // Override in subclasses
+  }
+}
+
+class TodoList extends BaseComponent {
+  constructor(props) {
+    super(props);
+    this.state = { ...this.state, todos: [] };
+  }
+  
+  render() {
+    if (this.state.loading) return <div>Loading...</div>;
+    
+    return (
+      <div>
+        {this.state.todos.map(todo => (
+          <TodoItem key={todo.id} todo={todo} />
+        ))}
+      </div>
+    );
+  }
+}
+
+// Bad: Deep inheritance hierarchy
+class EditableTodoList extends TodoList {
+  // More complex inheritance
+}
+```
+
+## !do composition-based
+
+**Use composition patterns for flexible component design.** This provides:
+- **Flexible component composition** without inheritance
+- **Easy testing** with isolated components
+- **Clear interfaces** with explicit prop contracts
+- **Reusable patterns** across different contexts
+
+```typescript !example
+// Good: Composition with Higher-Order Components
+function withLoading(Component) {
+  return function WithLoadingComponent(props) {
+    const [loading, setLoading] = useState(false);
+    
+    return (
+      <Component 
+        {...props} 
+        loading={loading}
+        setLoading={setLoading}
+      />
+    );
+  };
+}
+
+// Good: Composition with custom hooks
+function useTodoList() {
+  const [todos, setTodos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
+  return { todos, loading, setTodos, setLoading };
+}
+
+// Good: Composed components
+function TodoList() {
+  const { todos, loading } = useTodoList();
+  
+  if (loading) return <LoadingSpinner />;
+  
+  return (
+    <div>
+      {todos.map(todo => (
+        <TodoItem key={todo.id} todo={todo} />
+      ))}
+    </div>
+  );
+}
+
+// Good: Flexible composition with render props
+function DataProvider({ children, endpoint }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
+  return children({ data, loading, setData, setLoading });
+}
+
+function TodoPage() {
+  return (
+    <DataProvider endpoint="/api/todos">
+      {({ data, loading }) => (
+        <TodoList todos={data} loading={loading} />
+      )}
+    </DataProvider>
+  );
+}
+```
+
+</BestPractice>
+
+## Resources
+
+- [React Documentation](https://reactjs.org/docs/getting-started.html)
+- [React Patterns](https://reactpatterns.com/)
+- [React Hooks Documentation](https://reactjs.org/docs/hooks-intro.html)
+- [Using Custom Hooks to Reduce Component Complexity](https://medium.com/swlh/using-custom-hooks-to-reduce-component-complexity-fcb4563a9ffe)
+- [Presentational and Container Components](https://medium.com/@dan_abramov/smart-and-dumb-components-7ca2f9a7c7d0)
+- [Composition vs Inheritance](https://reactjs.org/docs/composition-vs-inheritance.html) 
