@@ -36,24 +36,24 @@ article {
 }
 
 /* Article content headings - target FumaDocs content areas */
-article h1,
-article h2,
-article h3,
-article h4,
-article h5,
-article h6,
-.nd-content h1,
-.nd-content h2,
-.nd-content h3,
-.nd-content h4,
-.nd-content h5,
-.nd-content h6,
-[data-content] h1,
-[data-content] h2,
-[data-content] h3,
-[data-content] h4,
-[data-content] h5,
-[data-content] h6 {
+article h1:not(.not-prose *),
+article h2:not(.not-prose *),
+article h3:not(.not-prose *),
+article h4:not(.not-prose *),
+article h5:not(.not-prose *),
+article h6:not(.not-prose *),
+.nd-content h1:not(.not-prose *),
+.nd-content h2:not(.not-prose *),
+.nd-content h3:not(.not-prose *),
+.nd-content h4:not(.not-prose *),
+.nd-content h5:not(.not-prose *),
+.nd-content h6:not(.not-prose *),
+[data-content] h1:not(.not-prose *),
+[data-content] h2:not(.not-prose *),
+[data-content] h3:not(.not-prose *),
+[data-content] h4:not(.not-prose *),
+[data-content] h5:not(.not-prose *),
+[data-content] h6:not(.not-prose *) {
   font-family: var(--font-kghappy) !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
