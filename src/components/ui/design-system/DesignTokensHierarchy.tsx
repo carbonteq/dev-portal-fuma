@@ -54,11 +54,11 @@ function AnimatedTokenCard({
   const lineHeigh = useTransform(scrollYProgress, [0.5, 1], ["0%", "100%"])
 
   return (
-    <motion.div ref={ref} style={{ scale, opacity, y }} className="flex flex-col items-center text-center">
+    <motion.div ref={ref} style={{ scale, opacity, y }} className="flex flex-col items-center text-center not-prose">
       <div className="max-w-md w-full">
-        <h3 className="text-sm font-bold uppercase tracking-widest text-yellow-500">{item.level}</h3>
-        <div className="relative mt-4">
-          <div className="bg-white dark:bg-gray-800 rounded-full shadow-lg dark:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.3),_0_4px_6px_-2px_rgba(0,0,0,0.1)] px-6 py-3 flex items-center gap-4 w-fit mx-auto">
+        <h3 className="text-sm font-bold uppercase tracking-widest">{item.level}</h3>
+        <div className="relative mt-2">
+          <div className="bg-white dark:bg-gray-700 rounded-full shadow-lg dark:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.3),_0_4px_6px_-2px_rgba(0,0,0,0.1)] px-6 py-3 flex items-center gap-4 w-fit mx-auto">
             <span className="w-5 h-5 rounded-full bg-[#FFDF38]" />
             <span className="font-mono font-semibold text-lg text-gray-800 dark:text-gray-200">{item.token}</span>
           </div>
