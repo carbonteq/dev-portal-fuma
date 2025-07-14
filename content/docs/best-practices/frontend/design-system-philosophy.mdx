@@ -3,81 +3,57 @@ title: "Design Systems Philosophy"
 description: "A six-layer architecture approach to building scalable design systems. Covers design tokens, atomic utilities, recipes, and variants for consistent, maintainable component libraries."
 ---
 import { ScrollyCoding } from '@/components/ui/ScrollyCoding';
+import { ControlHeights, ColorPalette, ShadowsAndLight } from '@/components/ui/visual-consistency';
+import { DesignTokensHierarchy, SemanticScaleDemo } from '@/components/ui/design-system';
 
-## The Challenge Every Development Team Faces
+## Understanding Design Systems
 
-Picture this scenario: Your design team creates a beautiful new component in Figma. The developers implement it with slightly different spacing. Marketing requests a brand color update. Engineering discovers the button component has been recreated twelve different ways across the codebase. Sound familiar?
+Hey there! Ever wondered how we keep everything looking so consistent and feeling just right across all our products? That's where our Design System comes in! Think of it as our secret sauce – a single, trusty guide that brings together all the pieces our teams need to design, build, and develop amazing products. It's all about making sure everything looks like it belongs to the same family and gives you a smooth, unified experience, no matter which of our products you're using.
 
-<Aside type="caution" title="The Challenge">
-This fragmentation represents one of the most persistent challenges in modern software development. Teams struggle with design inconsistency, duplicated effort, and the constant tension between maintaining visual standards and building features quickly. Traditional approaches force teams to choose between rigid design constraints and flexible development practices, creating inefficiencies that compound over time.
-</Aside>
+### Key Principle: Visual Consistency
 
-## The Human Cognition Problem: Why Numbers Fail Us
+One of the coolest things about design systems is its focus on Visual Consistency. This simply means that every button, every input field, every little element should feel like it's part of the same team. It's like making sure all the puzzle pieces fit perfectly!
+
+**Why Do All Our Controls Feel So... Right?**
+
+You'll notice that all our buttons, input fields, and other interactive bits have the same comfortable height. No surprises there! This isn't by accident - when controls share the same height, everything just feels more polished and professional.
+
+<ControlHeights />
+
+**Our Colors Actually Work Together (Unlike That One Project...)**
+
+We've got a carefully chosen set of primary, secondary, and accent colors. We stick to these like glue to make sure our brand always shines through consistently. No more "let me just pick this slightly different shade of blue" moments!
+
+<ColorPalette />
+
+**The Magic of Consistent Shadows and Light**
+
+Even the way shadows fall and how light seems to hit our elements is consistent. This helps everything feel cohesive and makes it easy to understand what's important on the screen. It's like having the same lighting director for every scene in a movie.
+
+<ShadowsAndLight />
+
+## Design System vs. Multi-Product Design System
+
+Now, a regular design system might just focus on one product. But since we’re building a whole suite of awesome products, we need something a bit more powerful – a **multi-product design system!** This brings two super important things to the table:
+
+1. **Themeability**  
+   Imagine being able to give different products their own unique look and feel, even if they’re built with the same core components. That’s _themeability!_ It lets us differentiate brands while keeping the underlying structure and interactions familiar.
+
+2. **Extensibility**  
+   Our products are always growing and evolving, and our design system needs to keep up! _Extensibility_ means we can easily tweak existing elements or add brand new ones without breaking anything. It’s built to grow with us!
+
+## Design Tokens: The Building Blocks
+
+Think of **Design Tokens** as the tiny, powerful building blocks of our design system. They’re basically named little containers that hold design decisions—like a specific color code (`#FFDF38`) or a font size (`16px`). They’re like “configurable knobs” that let us manage and update design properties in a super organized way.
+
+<DesignTokensHierarchy />
+
+
+### Titbit: Why Numbers Fail Us
 
 The fundamental issue lies in how we approach CSS architecture. Historically, styling methodologies have been divided into two distinct camps: visual hierarchy approaches that use descriptive class names like `.text-red { color: red; }`, and semantic hierarchy approaches that use meaningful names like `.error { color: red; }`. Each methodology offers compelling benefits, yet neither alone addresses the full spectrum of challenges teams face when building scalable design systems.
 
-<BestPractice title="Human Cognition and Memory Limitations">
-
-While teams often focus on tooling and process improvements, the fundamental challenge lies deeper: **human cognition and memory limitations**. The human brain struggles to process and retain numerical values, especially abstract ones like hex codes and pixel measurements.
-
-## !dont numerical-values
-
-**Use arbitrary numerical values in CSS.** This creates:
-- Cognitive overhead for developers remembering values
-- Inconsistent approximations across team members
-- Gradual drift of spacing and color values
-- Difficult communication about design intent
-
-```css !example
-/* Developer A writes this */
-.header {
-  padding: 24px;
-  margin: 16px;
-  color: #3b82f6;
-  border-radius: 8px;
-}
-
-/* Developer B writes this elsewhere */
-.card {
-  padding: 20px; /* Close but not quite */
-  margin: 18px;  /* Slightly different */
-  color: #2563eb; /* Similar blue, wrong shade */
-  border-radius: 6px; /* Rounded but inconsistent */
-}
-```
-
-## !do semantic-tokens
-
-**Use semantic tokens for consistent design decisions.** They provide:
-- **Cognitive Load Reduction**: "primary-500" is easier to remember than "#3b82f6"
-- **Intentional Design**: "layout-md" communicates purpose, not just measurement
-- **Consistent Spacing**: Semantic tokens prevent the gradual drift of spacing values
-- **Improved Communication**: Team members can discuss "layout spacing" meaningfully
-
-```typescript !example
-// With semantic tokens using Panda CSS
-import { css } from '../styled-system/css'
-
-const headerStyle = css({
-  padding: 'layout.md',
-  margin: 'layout.sm',
-  color: 'primary.500',
-  borderRadius: 'md'
-})
-
-const cardStyle = css({
-  padding: 'layout.md',
-  margin: 'layout.sm',
-  color: 'primary.500',
-  borderRadius: 'md'
-})
-
-// Usage in components
-<div className={headerStyle}>Header</div>
-<div className={cardStyle}>Card</div>
-```
-
-</BestPractice>
+<SemanticScaleDemo />
 
 ## A New Synthesis: Bridging Visual and Semantic Approaches
 
