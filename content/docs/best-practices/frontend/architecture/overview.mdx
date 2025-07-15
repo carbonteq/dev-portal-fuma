@@ -71,7 +71,7 @@ Sometimes, you'll have a variation of a primitive that's used in several places,
 
 **Composites** are components built by combining one or more primitives. They encapsulate more specific business logic and are tailored to your application's features. We further organize composites into:
 
-1.  **common**: Components that are reused across multiple features of the application (e.g., a generic `Modal` or `Header`).
+1.  **common**: Components that are reused across multiple features of the application (e.g., a `Header` or `Footer`).
 2.  Feature-specific folders: Components that belong to a particular feature, like a `TodoItem` or `TodoList` in a todo application.
 
 Here's how that component structure might look for a todo app:
@@ -89,7 +89,7 @@ Here's how that component structure might look for a todo app:
       </Folder>
       <Folder name="composites" defaultOpen>
         <Folder name="common" defaultOpen>
-          <File name="Modal/" />
+          <File name="Header/" />
         </Folder>
         <Folder name="todo" defaultOpen>
           <File name="TodoItem/" />
@@ -244,6 +244,22 @@ export const useTodoList = (fetcher) => {
 
 This pattern of co-locating logic with a custom hook keeps our container components clean and focused, while making the logic itself easy to find, understand, and test. The same principle applies to React Context: if a context is only needed by a small subtree of components, it should live with them in their feature folder.
 
+## Architecture Breakdown
+
+Scroll through the interactive visualization below to understand how data flows through our frontend architecture layers:
+
+<ScrollVisualization />
+
+### Data Flow
+
+The data flows in a predictable, top-down pattern:
+
+1.  **Pages** compose **Containers**.
+2.  **Containers** use services from `shared/services` to fetch data.
+3.  **Containers** use co-located or shared **Hooks** for state management.
+4.  **Containers** pass data to **Components** for presentation.
+5.  **Components** are built from **Primitives** and **Composites**.
+
 ## The `shared` Directory: A Home for Truly Reusable Code
 
 Not all code is specific to a single feature. Some things need to be accessed from many different, unrelated parts of the application. For this, we have the `shared` directory. It's the designated home for any code that is genuinely global and reusable.
@@ -360,22 +376,6 @@ Phew, that was a lot! We've journeyed from high-level principles to a sophistica
 </Files>
 
 As you can see, this structure gives every part of our application a clear and logical home, guided by our principles of co-location and separation of concerns.
-
-## Architecture Breakdown
-
-Scroll through the interactive visualization below to understand how data flows through our frontend architecture layers:
-
-<ScrollVisualization />
-
-### Data Flow
-
-The data flows in a predictable, top-down pattern:
-
-1.  **Pages** compose **Containers**.
-2.  **Containers** use services from `shared/services` to fetch data.
-3.  **Containers** use co-located or shared **Hooks** for state management.
-4.  **Containers** pass data to **Components** for presentation.
-5.  **Components** are built from **Primitives** and **Composites**.
 
 ## Resources
 
