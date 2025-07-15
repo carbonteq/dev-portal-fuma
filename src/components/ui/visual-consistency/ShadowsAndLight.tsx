@@ -13,7 +13,7 @@ export const ShadowsAndLight: React.FC = () => {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
-            <XCircle className="w-5 h-5 text-red-500" />
+            <XCircle className="w-5 h-5 text-red-400" />
             Inconsistent
           </CardTitle>
         </CardHeader>
@@ -46,7 +46,7 @@ export const ShadowsAndLight: React.FC = () => {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
-            <CircleCheck className="w-5 h-5 text-green-500" />
+            <CircleCheck className="w-5 h-5 text-green-400" />
             Consistent
           </CardTitle>
         </CardHeader>
