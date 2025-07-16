@@ -2,6 +2,7 @@ import './global.css';
 import { RootProvider } from 'fumadocs-ui/provider';
 import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
+import { SmoothScroll } from '@/components/ui/effects';
 
 const vactorySans = localFont({
   src: '../../public/fonts/VactorySansRegular-drrAV.woff',
@@ -19,7 +20,11 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${vactorySans.variable} ${kgHappy.variable}`} suppressHydrationWarning>
       <body className={`flex flex-col min-h-screen ${vactorySans.className}`}>
-        <RootProvider>{children}</RootProvider>
+        <RootProvider>
+          <SmoothScroll>
+            {children}
+          </SmoothScroll>
+        </RootProvider>
       </body>
     </html>
   );
