@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { WavyBackground, GlowCard, GlowButton, GlowingEffect, BackgroundGradient } from '@/components/ui/effects';
+import { WavyBackground, GlowCard, GlowButton, GlowingEffect, BackgroundGradient, SmoothScroll } from '@/components/ui/effects';
 
 interface GridItemProps {
   area: string;
@@ -46,7 +46,8 @@ const GridItem = ({ area, href, icon, title, description }: GridItemProps) => {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-black">
+    <SmoothScroll>
+      <div className="min-h-screen bg-black">
       {/* Hero Section with Wavy Background */}
       <WavyBackground 
         className="text-center"
@@ -97,10 +98,10 @@ export default function HomePage() {
                 <div className="space-y-4">
                   <p className="text-sm">Comprehensive training modules covering architecture, backend development, DevOps, frontend, and QA.</p>
                   <div className="flex flex-col gap-2">
-                    <Link href="/docs/training/architecture" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Architecture</Link>
-                    <Link href="/docs/training/backend-typescript" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Backend TS</Link>
-                    <Link href="/docs/training/devops" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ DevOps</Link>
-                    <Link href="/docs/training/frontend-react" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Frontend</Link>
+                    <Link href="/docs/training/architecture/realestatesystemdesign" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Architecture</Link>
+                    <Link href="/docs/training/backend-typescript/todo" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Backend TS</Link>
+                    <Link href="/docs/training/devops/build_your_own_k8_container" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ DevOps</Link>
+                    <Link href="/docs/training/frontend-react/pos-application" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Frontend</Link>
                   </div>
                 </div>
               }
@@ -120,8 +121,8 @@ export default function HomePage() {
                 <div className="space-y-4">
                   <p className="text-sm">Discover proven patterns, principles, and methodologies for frontend, backend, and full-stack development.</p>
                   <div className="flex flex-col gap-2">
-                    <Link href="/docs/best-practices/frontend" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Frontend</Link>
-                    <Link href="/docs/best-practices/backend" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Backend</Link>
+                    <Link href="/docs/best-practices/frontend/overview" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Frontend</Link>
+                    <Link href="/docs/best-practices/backend/overview" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Backend</Link>
                     <Link href="/docs/best-practices/javascript" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ JavaScript</Link>
                     <Link href="/docs/best-practices/solid" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ SOLID</Link>
                   </div>
@@ -168,7 +169,7 @@ export default function HomePage() {
             {/* About Us Card */}
             <GridItem
               area="md:[grid-area:6/7/7/10]"
-              href="/docs/about-us"
+              href="/docs/about-us/why-we-exist"
               icon={
                 <svg className="w-5 h-5 text-black dark:text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -257,5 +258,6 @@ export default function HomePage() {
         </div>
       </section>
     </div>
+    </SmoothScroll>
   );
 }
