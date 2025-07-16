@@ -19,7 +19,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${vactorySans.variable} ${kgHappy.variable}`} suppressHydrationWarning>
       <body className={`flex flex-col min-h-screen ${vactorySans.className}`}>
-        <RootProvider>{children}</RootProvider>
+        <RootProvider>
+          {children}
+        </RootProvider>
       </body>
     </html>
   );
