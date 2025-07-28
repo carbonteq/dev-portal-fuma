@@ -1,4 +1,6 @@
+"use client";
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { WavyBackground, GlowCard, GlowButton, GlowingEffect, BackgroundGradient, SmoothScroll } from '@/components/ui/effects';
 
 interface GridItemProps {
@@ -10,6 +12,23 @@ interface GridItemProps {
 }
 
 const GridItem = ({ area, href, icon, title, description }: GridItemProps) => {
+  const router = useRouter();
+
+  const handleCardClick = () => {
+    router.push(href);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleCardClick();
+    }
+  };
+
+  const handleSubLinkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <li className={`min-h-[8rem] list-none ${area}`}>
       <div className="relative h-full rounded-2xl border p-2 md:rounded-3xl md:p-3">
@@ -22,10 +41,17 @@ const GridItem = ({ area, href, icon, title, description }: GridItemProps) => {
           proximity={64}
           inactiveZone={0.01}
         />
-        <Link href={href} className="block h-full">
-          <div className="border-0.75 relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl p-4 md:p-5 bg-[#1a1a1a]/80 backdrop-blur-sm dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
+        <div 
+          className="block h-full cursor-pointer"
+          onClick={handleCardClick}
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+          role="button"
+          aria-label={`Navigate to ${title}`}
+        >
+          <div className="border-0.75 relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl p-4 md:p-5 bg-[#1a1a1a]/80 backdrop-blur-sm dark:shadow-[0px_0px_27px_0px_#2D2D2D] hover:bg-[#1a1a1a]/90 transition-colors duration-200">
             <div className="relative flex flex-1 flex-col justify-between gap-2">
-                              <div className="w-fit rounded-lg border border-[#4a4a4a] p-2">
+              <div className="w-fit rounded-lg border border-[#4a4a4a] p-2">
                 {icon}
               </div>
               <div className="space-y-2">
@@ -33,12 +59,14 @@ const GridItem = ({ area, href, icon, title, description }: GridItemProps) => {
                   {title}
                 </h3>
                 <h2 className="font-sans text-base/[1.25rem] text-black md:text-lg/[1.5rem] dark:text-[#a0a0a0] [&_b]:md:font-semibold [&_strong]:md:font-semibold">
-                  {description}
+                  <div onClick={handleSubLinkClick}>
+                    {description}
+                  </div>
                 </h2>
               </div>
             </div>
           </div>
-        </Link>
+        </div>
       </div>
     </li>
   );
@@ -83,11 +111,11 @@ export default function HomePage() {
           </p>
           
           {/* Bento Grid Layout */}
-          <ul className="grid grid-cols-1 gap-4 md:grid-cols-12 md:grid-rows-6 lg:gap-4 h-[90vh]">
+          <ul className="grid grid-cols-1 gap-4 md:grid-cols-12 md:grid-rows-6 lg:gap-4 h-[90vh] min-h-[800px]">
             {/* Training Card - Equal width */}
             <GridItem
               area="md:[grid-area:1/1/4/7]"
-              href="/docs/training"
+              href="/docs/training/backend-typescript/headless-doc-management"
               icon={
                 <svg className="w-5 h-5 text-black dark:text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -99,7 +127,7 @@ export default function HomePage() {
                   <p className="text-sm">Comprehensive training modules covering architecture, backend development, DevOps, frontend, and QA.</p>
                   <div className="flex flex-col gap-2">
                     <Link href="/docs/training/architecture/realestatesystemdesign" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Architecture</Link>
-                    <Link href="/docs/training/backend-typescript/todo" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Backend TS</Link>
+                    <Link href="/docs/training/backend-typescript/headless-doc-management" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Backend TS</Link>
                     <Link href="/docs/training/devops/build_your_own_k8_container" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ DevOps</Link>
                     <Link href="/docs/training/frontend-react/pos-application" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Frontend</Link>
                   </div>
@@ -110,7 +138,7 @@ export default function HomePage() {
             {/* Best Practices Card - Equal width */}
             <GridItem
               area="md:[grid-area:1/7/4/13]"
-              href="/docs/best-practices"
+              href="/docs/best-practices/backend/overview"
               icon={
                 <svg className="w-5 h-5 text-black dark:text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -133,7 +161,7 @@ export default function HomePage() {
             {/* Build Your Own X Card - Larger position */}
             <GridItem
               area="md:[grid-area:4/1/7/7]"
-              href="/docs/build-your-own-x"
+              href="/docs/build-your-own-x/cloud-architectural-patterns"
               icon={
                 <svg className="w-5 h-5 text-black dark:text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -156,7 +184,7 @@ export default function HomePage() {
             {/* Learning Resources Card - Full width */}
             <GridItem
               area="md:[grid-area:4/7/6/13]"
-              href="/docs/learning-resources"
+              href="/docs/learning-resources/frontend/beginner/courses"
               icon={
                 <svg className="w-5 h-5 text-black dark:text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -188,7 +216,7 @@ export default function HomePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
               }
-              title="Browse All Docs"
+              title="Browse All"
               description="Complete documentation library."
             />
           </ul>
