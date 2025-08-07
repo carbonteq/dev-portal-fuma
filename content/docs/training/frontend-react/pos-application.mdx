@@ -22,11 +22,12 @@ title: POS Application
 ### Product Listing
 
 * The homepage should display a list of products using Server-Side Rendering (SSR).
-* Implement streaming UI for product added cart to improve perceived performance.
+* User should be able to search and apply filters to the products.
 * Each product card should show:
   * Name
   * Price
   * Image
+  * Product Variants
   * "Add to Cart" button
 * Allow users to increase or decrease product quantity directly on the card.
 * After clicking "Add to Cart," replace the button with quantity controls (+/- buttons).
@@ -41,14 +42,16 @@ title: POS Application
 
    
    1. Users should have the option to apply discounts to individual items or the entire order.
-   2. Discounts should be retrieved from an API and displayed as options during the checkout process.
-   3. The application should recalculate the order amount dynamically when discounts are applied.
+   2. If a discount currently applied at the order level is removed from an individual item, then the respective discount no longer remains an order level discount and should be applied on the remaining items individually.
+   3. Discounts should be retrieved from an API and displayed as options during the checkout process.
+   4. The application should recalculate the order amount dynamically when discounts are applied.
 5. Taxes
 
    
    1. Users should be able to toggle taxes on/off for individual items or the entire order to see the amounts with and without taxes.
-   2. Tax options should be retrieved from an API and displayed during the checkout process.
-   3. The application should recalculate the order amount dynamically when tax settings are changed.
+   2. If a tax currently applied at the order level is removed from an individual item, then the respective tax no longer remains an order level tax and should be applied on the remaining items individually.
+   3. Tax options should be retrieved from an API and displayed during the checkout process.
+   4. The application should recalculate the order amount dynamically when tax settings are changed.
 
 ### Payment Processing
 
@@ -64,6 +67,7 @@ title: POS Application
 * Use Next.js server actions to integrate directly with Square POS APIs.
 * Implement functions for product retrieval, discount and tax options, and order processing.
 * Ensure Square API calls are made securely using authenticated sessions.
+* Use services to separate API logic from components, and apply the Dependency Inversion Principle (DIP) to depend on abstractions for improved flexibility.
 
 ### User Interface
 
@@ -100,20 +104,20 @@ title: POS Application
 
 Tasks:
 
-
-1. Set up the Next.js project with TypeScript.
-2. Configure Ant Design (antd) UI library and [AntD tokens](https://blog.carbonteq.com/antd-v5-design-tokens-101/).
-3. Set up linting and build scripts.
-4. Implement [NextAuth.js](https://authjs.dev/) for authentication:
-5. Configure Square OAuth provider.
-6. Set up NextAuth API routes and callbacks.
-7. Implement protected routes using NextAuth middleware.
-8. Create login/logout UI components.
+1. Use pnpm as package manager
+2. Set up the Next.js project with TypeScript.
+3. Configure [Panda CSS](https://panda-css.com/) and [Pallas UI](https://pallas-ui-docs.vercel.app/).
+4. Set up linting and build scripts.
+5. Implement [NextAuth.js](https://next-auth.js.org/) for authentication:
+6. Configure Square OAuth provider.
+7. Set up NextAuth API routes and callbacks.
+8. Implement protected routes using NextAuth middleware.
+9. Create login/logout UI components.
 
 Expectations:
 
 * Project structure follows Next.js best practices for TypeScript projects.
-* Ant Design components are properly configured and themed using design tokens.
+* Pallas UI components are properly configured and themed using options provided by Pallas UI (and custom Panda CSS tokens, if necessary).
 * ESLint and Prettier are set up with appropriate rules.
 * NextAuth is fully integrated with Square OAuth:
 * Users can log in and out seamlessly.
@@ -134,9 +138,9 @@ Tasks:
 Expectations:
 
 * Homepage renders server-side for optimal performance.
-* Create a custom product card component using AntD tokens.
+* Create a custom product card component using Pallas UI tokens.
 * Product search and filtering are fast and accurate.
-* Shopping cart uses streaming UI for improved perceived performance.
+* Use streaming UI patterns to progressively display content and components to enhance perceived performance.
 * React Query is properly implemented for efficient data management.
 * All operations are secure and respect the user's authentication status.
 * Implement well-defined component [patterns](https://outline.carbonteq.com/s/a124241a-28a7-479b-8268-405f36743850) (container/layout/UI) and use composition to build a modular and maintainable [codebase](https://github.com/Yacouri/reactjs-folders-boilerplate/tree/master/src).
@@ -144,9 +148,9 @@ Expectations:
 
 
 <Aside type="info">
-Refactor the codebase to separate side-effects and API calls from components.
+Explore different design aesthetics such as minimalism, neo-brutalism, and glassmorphism. Find inspirations on design platforms like [Dribbble](https://dribbble.com/) or [Behance](https://www.behance.net/).
 
-Explore use of [AntD-Style](https://github.com/ant-design/antd-style)
+Refactor the codebase to separate side-effects and API calls from components.
 </Aside>
 
 ### Phase 3: Checkout Process
@@ -161,7 +165,6 @@ Expectations:
 
 * Checkout process is smooth and intuitive.
 * Discounts and taxes are correctly applied and calculated.
-* Create at least one discount item that can be applied to only one specific variant of the item.
 * Custom hooks encapsulate complex business logic, making it reusable and testable.
 * [Follow immutability practices consistently throughout the application to ensure data integrity and predictable behavior.](https://react.dev/learn/adding-interactivity)
 * State management relies on React's built-in features (useState, useReducer) rather than external libraries.
@@ -173,10 +176,13 @@ Tasks:
 
 1. Utilize a third-party library, such as [Zustand](https://docs.pmnd.rs/zustand/getting-started/introduction), to move local state management logic to a global state.
 2. Implement error boundaries for the SSR page.
-3. Optimize performance using Next.js image optimization and other techniques.
-4. Write unit tests for key components, including NextAuth integration.
-5. Develop end-to-end tests for critical user journeys, including login/logout flows.
-6. Perform security audit, focusing on authentication and API integrations.
+3. Configure [React Scan](https://react-scan.com/) and use it to find areas to optimize rendering.
+4. Optimize performance using Next.js image optimization, font optimization and other techniques.
+5. Configure [React Compiler](https://react.dev/learn/react-compiler) in your project. Build the application with React Compiler enabled.
+6. Use React Scan to compare the performance of your unoptimized and optimized implementations, both with React Compiler enabled and disabled.
+7. Write unit tests for key components, including NextAuth integration.
+8. Develop end-to-end tests for critical user journeys, including login/logout flows.
+9. Perform security audit, focusing on authentication and API integrations.
 
 Expectations:
 
@@ -196,7 +202,7 @@ Explore [middleware](https://nextjs.org/docs/pages/building-your-application/dep
 
 
 <Aside type="info">
-Explore [ImmerJs](https://immerjs.github.io/immer/) [NextJs image optimization](https://nextjs.org/docs/pages/building-your-application/deploying#image-optimization)
+Explore [ImmerJs](https://immerjs.github.io/immer/), [NextJs image optimization](https://nextjs.org/docs/pages/building-your-application/deploying#image-optimization)
 
 Develop understanding of web vitals
 </Aside>
@@ -213,4 +219,3 @@ Develop understanding of web vitals
 ## Extra’s
 
 * Signals
-* Forms API in Ant Design
