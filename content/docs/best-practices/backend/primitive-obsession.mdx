@@ -1,0 +1,428 @@
+---
+title: Primitive Obsession
+description: Evolve a DDD-style Post from primitives to clear value objects with guards
+---
+
+import { ScrollyCoding } from "@/components/ui/ScrollyCoding"
+
+## Evolution Of a Post Entity
+
+We’ll evolve a single example: a Blog Post with text, status, and tags. We start with primitives and refactor into explicit value objects and a simple aggregate.
+
+<ScrollyCoding>
+
+## !!steps Naive Class: No Domain Rules
+
+Let’s start super simple: everything is a primitive—no rules, no guardrails.
+
+```typescript !
+// Simple class, all fields are primitives
+class PostEntity {
+  constructor(
+    public text: string,
+    public status: string,
+    public tags: string[]
+  ) {}
+}
+
+// Small usage
+const p = new PostEntity("Hello", "publised", ["typescript", "typescript"]) // typos/dupes compile
+console.log(p)
+```
+
+## !!steps The Smell: Post with Primitives
+
+Using strings for everything hides intent and lets subtle bugs slip in.
+
+- Here’s what we actually care about:
+  - Status should be "draft" or "published" (required)
+  - Tags should be a unique set (no duplicates)
+  - We want at most 5 tags per post
+
+```typescript !
+// !mark(1:7) #22c55e
+// !warning[/guardStatus/] #22c55e Status validation logic polluting the entity
+function guardStatus(input: string): "draft" | "published" {
+  const v = input.trim().toLowerCase()
+  if (v !== "draft" && v !== "published") {
+    throw new Error("Invalid status (draft|published)")
+  }
+  return v as "draft" | "published"
+}
+
+// !mark(1:6) #eab308
+class PostEntity {
+  private constructor(
+    private _text: string,
+    private _status: "draft" | "published",
+    private _tags: string[]
+  ) {}
+
+  // !mark(1:8) #22c55e
+  static create(input: { text: string; status: string; tags?: string[] })
+  : PostEntity | { error: string } {
+
+    const status = guardStatus(input.status)
+    const tags = PostEntity.normalizeTags(input.tags || [])
+    return new PostEntity(text, status, tags)
+  }
+
+  // !mark(1:37) #22c55e
+  // !warning[/normalizeSingleTag/] #22c55e Tag logic polluting the entity
+  private static normalizeSingleTag(raw: string): string {
+    const normalized = raw.trim().toLowerCase()
+    // Allow empty tags and any characters
+    return normalized
+  }
+  // !warning[/normalizeTags/] #22c55e Tag collections rules in entity
+  private static normalizeTags(raw: string[]): string[] {
+    const out: string[] = []
+    const seen = new Set<string>()
+    for (const t of raw) {
+      const normalized = PostEntity.normalizeSingleTag(t)
+      if (seen.has(normalized)) continue // skip duplicates
+      out.push(normalized)
+      seen.add(normalized)
+      if (out.length > 5) throw new Error("Too many tags (max 5)")
+    }
+    return out
+  }
+
+  private isDuplicate(normalized: string): boolean {
+    return this._tags.includes(normalized)
+  }
+
+  private hasCapacity(): boolean {
+    return this._tags.length < 5
+  }
+  
+  // !error[/addTag/] #22c55e PostEntity knows too much about tag implementation details
+  addTag(tag: string): void {
+    const normalized = PostEntity.normalizeSingleTag(tag)
+    if (this.isDuplicate(normalized)) throw new Error("Duplicate tag")
+    if (!this.hasCapacity()) throw new Error("Too many tags (max 5)")
+    this._tags.push(normalized)
+  }
+
+  toJSON() {
+    return { text: this._text, status: this._status, tags: [...this._tags] }
+  }
+}
+
+// Usage examples
+const p1 = PostEntity.create({ text: "Hello", status: "draft", tags: ["TS", "ddd", "DDD"] })
+//Duplicate "ddd" collapses to one; max 5 enforced
+console.log(p1)
+
+const p2 = PostEntity.create({ text: "Hello", status: "publised" })
+// Invalid status rejected
+console.log(p2)
+
+// language removed from the model
+
+const p4 = PostEntity.create({ text: "Hello", status: "draft", tags: [
+  "typescript", "clean-arch", "ddd", "extra1", "extra2", "extra3"
+] })
+//Max 5 tags enforced
+console.log(p4)
+```
+
+## !!steps Step 1: Enum for Status
+
+Tighten up status with a tiny enum so typos stop compiling. Tags can stay primitives for now.
+
+```typescript !
+// !mark(1:4) #22c55e
+export enum PostStatus { 
+  Draft = "draft", 
+  Published = "published" 
+}
+
+class PostEntity {
+  private constructor(
+    private _text: string,
+    // !mark(1:1) #eab308
+    private _status: PostStatus, // Changed from string to enum
+    private _tags: string[]
+  ) {}
+
+  static create(input: { text: string; status: string; tags?: string[] })
+  : PostEntity | { error: string } {
+
+    // !mark(1:3) #eab308
+    const statusEnum = Object.values(PostStatus).find(s => s === input.status.toLowerCase())
+    if (!statusEnum) return { error: "Invalid status" }
+
+    const tags = PostEntity.normalizeTags(input.tags || [])
+    // !mark(1:1) #eab308
+    return new PostEntity(input.text, statusEnum as PostStatus, tags)
+  }
+
+  // !collapse(1:5) collapsed
+  // normalizeSingleTag methods unchanged
+  private static normalizeSingleTag(raw: string): string {
+    const normalized = raw.trim().toLowerCase()
+    return normalized
+  }
+
+  // !collapse(1:13) collapsed
+  // normalizeTags method unchanged
+  private static normalizeTags(raw: string[]): string[] {
+    const out: string[] = []
+    const seen = new Set<string>()
+    for (const t of raw) {
+      const normalized = PostEntity.normalizeSingleTag(t)
+      if (seen.has(normalized)) continue
+      out.push(normalized)
+      seen.add(normalized)
+      if (out.length > 5) throw new Error("Too many tags (max 5)")
+    }
+    return out
+  }
+}
+
+// Usage example
+const p1 = PostEntity.create({ 
+  text: "Hello", 
+  status: "draft", 
+  tags: ["TS", "ddd", "DDD"] 
+})
+console.log(p1)
+```
+
+## !!steps Step 2: Simple Tag Value Object
+
+Give tags a small value object so inputs are normalized and empties are rejected.
+
+```typescript !
+export enum PostStatus { 
+  Draft = "draft", 
+  Published = "published" 
+}
+
+// !mark(1:12) #22c55e
+class Tag {
+  private constructor(private readonly _value: string) {}
+  
+  static create(input: string): Tag {
+    const normalized = input.trim().toLowerCase()
+    if (!normalized) throw new Error("Tag cannot be empty")
+    return new Tag(normalized)
+  }
+  
+  toString(): string { return this._value }
+}
+
+
+class PostEntity {
+  private constructor(
+    private _text: string,
+    private _status: PostStatus,
+    // !mark(1:1) #eab308
+    private _tags: Tag[] // Changed from string[] to Tag[]
+  ) {}
+
+  static create(input: { text: string; status: string; tags?: string[] })
+  : PostEntity | { error: string } {
+    const statusEnum = Object.values(PostStatus).find(s => s === input.status.toLowerCase())
+    if (!statusEnum) return { error: "Invalid status" }
+
+    // !mark(1:4) #eab308
+    const initialTags = input.tags?.map(t => Tag.create(t)) || []
+    const tags = PostEntity.normalizeTags(initialTags)
+    
+    return new PostEntity(input.text, statusEnum as PostStatus, tags)
+  }
+
+  // !mark(1:13) #eab308
+  // normalizeTags replaced by Tag value object; keep collection logic here
+  private static normalizeTags(raw: Tag[]): Tag[] {
+    const out: Tag[] = []
+    const seen = new Set<string>()
+    for (const tag of raw) {
+      const key = tag.toString()
+      if (seen.has(key)) continue // skip duplicates
+      if (out.length >= 5) throw new Error("Too many tags (max 5)")
+      out.push(tag)
+      seen.add(key)
+    }
+    return out
+  }
+}
+
+// Usage examples
+const tag = Tag.create("TypeScript") // normalizes to "typescript"
+console.log(tag.toString())
+
+
+const p1 = PostEntity.create({
+  text: "Hello",
+  status: "draft",
+  tags: ["TS", "ddd", "DDD", "ts"] // duplicates normalize and dedupe
+})
+console.log(p1)
+```
+
+## !!steps Step 3: Tags Collection with Guards
+
+Wrap tags in a lightweight collection that guarantees uniqueness and caps the list at five.
+
+```typescript !
+export enum PostStatus { 
+  Draft = "draft", 
+  Published = "published" 
+}
+
+class Tag {
+  private constructor(private readonly _value: string) {}
+  
+  static create(input: string): Tag {
+    const normalized = input.trim().toLowerCase()
+    if (!normalized) throw new Error("Tag cannot be empty")
+    return new Tag(normalized)
+  }
+  
+  toString(): string { return this._value }
+}
+
+// !mark(1:20) #22c55e
+class Tags {
+  private constructor(private readonly _items: Tag[]) {}
+  
+  static create(inputs: string[]): Tags {
+    const unique: Tag[] = []
+    const seen = new Set<string>()
+    
+    for (const raw of inputs) {
+      const tag = Tag.create(raw)
+      const key = tag.toString()
+      if (seen.has(key)) continue // skip duplicates
+      if (unique.length >= 5) throw new Error("Too many tags (max 5)")
+      unique.push(tag)
+      seen.add(key)
+    }
+    return new Tags(unique)
+  }
+  
+  toArray(): string[] { return this._items.map(t => t.toString()) }
+}
+
+class PostEntity {
+  private constructor(
+    private _text: string,
+    private _status: PostStatus,
+    // !mark(1:1) #22c55e
+    private _tags: Tags // Changed from Tag[] to Tags collection
+  ) {}
+
+  static create(input: { text: string; status: string; tags?: string[] })
+  : PostEntity | { error: string } {
+    const statusEnum = Object.values(PostStatus).find(s => s === input.status.toLowerCase())
+    if (!statusEnum) return { error: "Invalid status" }
+
+    // !mark(1:2) #22c55e
+    const tags = Tags.create(input.tags || [])
+    // Now using Tags collection with built-in deduplication and limits
+    
+    return new PostEntity(input.text, statusEnum as PostStatus, tags)
+  }
+}
+
+const tags = Tags.create(["TypeScript", "DDD", "typescript"]) // "typescript" appears once
+console.log(tags.toArray())
+```
+
+## !!steps Step 4: Final Post Entity with Value Objects
+
+Polish the API and expose a clean Post that leans on value objects to enforce rules. 
+
+Conclusion: At this point, the `PostEntity` is explicit and resilient—status is guarded by an enum, tags are normalized, deduplicated, and bounded, and the core rules live in small value objects instead of scattered helpers.
+
+
+```typescript !
+export enum PostStatus { 
+  Draft = "draft", 
+  Published = "published" 
+}
+
+class Tag {
+  private constructor(private readonly _value: string) {}
+  
+  static create(input: string): Tag {
+    const normalized = input.trim().toLowerCase()
+    if (!normalized) throw new Error("Tag cannot be empty")
+    return new Tag(normalized)
+  }
+  
+  toString(): string { return this._value }
+}
+
+// !mark(1:20) #22c55e
+class Tags {
+  private constructor(private readonly _items: Tag[]) {}
+  
+  static create(inputs: string[]): Tags {
+    const unique: Tag[] = []
+    const seen = new Set<string>()
+    
+    for (const raw of inputs) {
+      const tag = Tag.create(raw)
+      const key = tag.toString()
+      if (seen.has(key)) continue
+      if (unique.length >= 5) throw new Error("Too many tags (max 5)")
+      unique.push(tag)
+      seen.add(key)
+    }
+    return new Tags(unique)
+  }
+  
+  toArray(): string[] { return this._items.map(t => t.toString()) }
+}
+
+class PostEntity {
+  
+  private constructor(
+    public text: string,
+    public status: PostStatus,
+    // !mark(1:1) #eab308
+    public tags: Tags
+  ) {}
+  
+  static create(input: { text: string; status: string; tags: string[] }): PostEntity {
+    const status = Object.values(PostStatus).find(s => s === input.status.toLowerCase())
+    if (!status) throw new Error("Invalid status")
+    
+    const tags = Tags.create(input.tags)
+    return new PostEntity(input.text, status as PostStatus, tags)
+  }
+
+  // !mark(1:6) #22c55e
+  toJSON() {
+    return { 
+      text: this.text, 
+      status: this.status, 
+      tags: this.tags.toArray() 
+    }
+  }
+}
+
+// Usage examples
+const post = PostEntity.create({
+  text: "Hello world",
+  status: "draft", 
+  tags: ["typescript", "DDD", "typescript", "clean"]
+})
+console.log(post.toJSON())
+```
+
+
+</ScrollyCoding>
+
+## Key Takeaways
+
+- **Start simple** with a naive class using primitives
+- **Add guards gradually** to enforce domain rules within the class
+- **Use enums** for controlled string values like status
+- **Create simple value objects** for concepts that need normalization
+
+

@@ -31,7 +31,7 @@ const GridItem = ({ area, href, icon, title, description }: GridItemProps) => {
 
   return (
     <li className={`min-h-[8rem] list-none ${area}`}>
-      <div className="relative h-full rounded-2xl border p-2 md:rounded-3xl md:p-3">
+      <div className="relative h-full rounded-2xl border border-[var(--color-fd-border)] dark:border-neutral-800 p-2 md:rounded-3xl md:p-3">
         <GlowingEffect
           blur={0}
           borderWidth={3}
@@ -49,16 +49,16 @@ const GridItem = ({ area, href, icon, title, description }: GridItemProps) => {
           role="button"
           aria-label={`Navigate to ${title}`}
         >
-          <div className="border-0.75 relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl p-4 md:p-5 bg-[#1a1a1a]/80 backdrop-blur-sm dark:shadow-[0px_0px_27px_0px_#2D2D2D] hover:bg-[#1a1a1a]/90 transition-colors duration-200">
+          <div className="border-0.75 relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl p-4 md:p-5 bg-[var(--color-fd-card)] dark:bg-[#1a1a1a]/80 backdrop-blur-sm dark:shadow-[0px_0px_27px_0px_#2D2D2D] hover:bg-[var(--color-fd-muted)] dark:hover:bg-[#1a1a1a]/90 transition-colors duration-200">
             <div className="relative flex flex-1 flex-col justify-between gap-2">
-              <div className="w-fit rounded-lg border border-[#4a4a4a] p-2">
+              <div className="w-fit rounded-lg border border-[var(--color-fd-border)] dark:border-[#4a4a4a] p-2">
                 {icon}
               </div>
               <div className="space-y-2">
-                <h3 className="-tracking-4 pt-0.5 font-sans text-2xl/[1.5rem] font-semibold text-balance text-black md:text-3xl/[2rem] dark:text-white">
+                <h3 className="-tracking-4 pt-0.5 font-sans text-2xl/[1.5rem] font-semibold text-balance text-[var(--color-fd-foreground)] md:text-3xl/[2rem] dark:text-white">
                   {title}
                 </h3>
-                <h2 className="font-sans text-base/[1.25rem] text-black md:text-lg/[1.5rem] dark:text-[#a0a0a0] [&_b]:md:font-semibold [&_strong]:md:font-semibold">
+                <h2 className="font-sans text-base/[1.25rem] text-[var(--color-fd-muted-foreground)] md:text-lg/[1.5rem] dark:text-[#a0a0a0] [&_b]:md:font-semibold [&_strong]:md:font-semibold">
                   <div onClick={handleSubLinkClick}>
                     {description}
                   </div>
@@ -75,7 +75,7 @@ const GridItem = ({ area, href, icon, title, description }: GridItemProps) => {
 export default function HomePage() {
   return (
     <SmoothScroll>
-      <div className="min-h-screen bg-black">
+      <div className="min-h-screen bg-[var(--color-fd-background)] text-[var(--color-fd-foreground)] dark:bg-black dark:text-white">
       {/* Hero Section with Wavy Background */}
       <WavyBackground 
         className="text-center"
@@ -101,12 +101,12 @@ export default function HomePage() {
       </WavyBackground>
 
       {/* Documentation Links Section */}
-      <section className="py-20 bg-black">
+      <section className="py-20 bg-[var(--color-fd-background)] dark:bg-black">
         <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-4xl font-bold text-white text-center mb-4">
+          <h2 className="text-4xl font-bold text-[var(--color-fd-foreground)] dark:text-white text-center mb-4">
             Explore Our Documentation
           </h2>
-          <p className="text-[#a0a0a0] text-center mb-12 text-lg">
+          <p className="text-[var(--color-fd-muted-foreground)] dark:text-[#a0a0a0] text-center mb-12 text-lg">
             Discover comprehensive guides, best practices, and resources to accelerate your development journey.
           </p>
           
@@ -126,10 +126,10 @@ export default function HomePage() {
                 <div className="space-y-4">
                   <p className="text-sm">Comprehensive training modules covering architecture, backend development, DevOps, frontend, and QA.</p>
                   <div className="flex flex-col gap-2">
-                    <Link href="/docs/training/architecture/realestatesystemdesign" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Architecture</Link>
-                    <Link href="/docs/training/backend-typescript/headless-doc-management" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Backend TS</Link>
-                    <Link href="/docs/training/devops/build_your_own_k8_container" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ DevOps</Link>
-                    <Link href="/docs/training/frontend-react/pos-application" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Frontend</Link>
+                    <Link href="/docs/training/architecture/realestatesystemdesign" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Architecture</Link>
+                    <Link href="/docs/training/backend-typescript/headless-doc-management" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Backend TS</Link>
+                    <Link href="/docs/training/devops/build_your_own_k8_container" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ DevOps</Link>
+                    <Link href="/docs/training/frontend-react/pos-application" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Frontend</Link>
                   </div>
                 </div>
               }
@@ -149,10 +149,10 @@ export default function HomePage() {
                 <div className="space-y-4">
                   <p className="text-sm">Discover proven patterns, principles, and methodologies for frontend, backend, and full-stack development.</p>
                   <div className="flex flex-col gap-2">
-                    <Link href="/docs/best-practices/frontend/overview" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Frontend</Link>
-                    <Link href="/docs/best-practices/backend/overview" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Backend</Link>
-                    <Link href="/docs/best-practices/javascript" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ JavaScript</Link>
-                    <Link href="/docs/best-practices/solid" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ SOLID</Link>
+                    <Link href="/docs/best-practices/frontend/overview" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Frontend</Link>
+                    <Link href="/docs/best-practices/backend/overview" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Backend</Link>
+                    <Link href="/docs/best-practices/javascript" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ JavaScript</Link>
+                    <Link href="/docs/best-practices/solid" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ SOLID</Link>
                   </div>
                 </div>
               }
@@ -172,10 +172,10 @@ export default function HomePage() {
                 <div className="space-y-4">
                   <p className="text-sm">Hands-on tutorials to build fundamental systems from scratch - DNS clients, rate limiters, websockets, and more.</p>
                   <div className="flex flex-col gap-2">
-                    <Link href="/docs/build-your-own-x/networking" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Networking</Link>
-                    <Link href="/docs/build-your-own-x/cloud-architectural-patterns" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Cloud Patterns</Link>
-                    <Link href="/docs/build-your-own-x/graphics" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Graphics</Link>
-                    <Link href="/docs/build-your-own-x/frontend" className="text-sm px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-emerald-300 hover:text-lime-300 hover:bg-emerald-800/40 transition-all duration-200">→ Frontend</Link>
+                    <Link href="/docs/build-your-own-x/networking" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Networking</Link>
+                    <Link href="/docs/build-your-own-x/cloud-architectural-patterns" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Cloud Patterns</Link>
+                    <Link href="/docs/build-your-own-x/graphics" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Graphics</Link>
+                    <Link href="/docs/build-your-own-x/frontend" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Frontend</Link>
                   </div>
                 </div>
               }

@@ -9,6 +9,9 @@
 # test & build
 /coverage
 /.next/
+/.playwright-mcp/
+/.kiro/
+/.fleet/
 /out/
 /build
 *.tsbuildinfo
