@@ -9,7 +9,7 @@ import { AnnotationHandler, InnerLine, BlockAnnotation } from "codehike/code"
 export const collapsable: AnnotationHandler = {
     name: "collapse",
     transform: (annotation: BlockAnnotation) => {
-        const { fromLineNumber } = annotation
+        const { fromLineNumber, toLineNumber } = annotation
         return [
             annotation,
             {
@@ -21,6 +21,7 @@ export const collapsable: AnnotationHandler = {
             {
                 ...annotation,
                 fromLineNumber: fromLineNumber + 1,
+                toLineNumber: toLineNumber,
                 name: "CollapseContent",
             },
         ]

@@ -32,7 +32,7 @@ export function ScrollyCoding(props: unknown) {
               
               return (
                 <Selectable
-                  key={i}
+                  key={`${i}-${step.title ?? 'step'}`}
                   index={i}
                   selectOn={["click", "scroll"]}
                   className={`block border-l-4 border-transparent data-[selected=true]:bg-gray-50 data-[selected=true]:border-black transition-all duration-300 cursor-pointer ${borderRadiusClass}`}
@@ -61,7 +61,7 @@ export function ScrollyCoding(props: unknown) {
             <div className="custom-scrollbar top-10 xl:top-0 sticky h-[calc(100vh-2.5rem)] xl:h-[100vh] rounded-r-lg">
               <Selection
                 from={steps.map((step, i) => (
-                  <Code codeblock={step.code} className="min-h-full border px-4 py-3 rounded-md rounded-l-none text-sm" />
+                  <Code key={`${i}-${step.title ?? 'step'}`} codeblock={step.code} className="min-h-full border px-4 py-3 rounded-md rounded-l-none text-sm" />
                 ))}
               />
             </div>

@@ -1,0 +1,1198 @@
+---
+title: Overview
+description: "A friendly, step-by-step tour of our infrastructure: start with a tiny model, add shared columns, then grow into a full repository with Drizzle and Effect — explained in plain language."
+---
+
+import { ScrollyCoding } from "@/components/ui/ScrollyCoding";
+
+# Infrastructure Evolution
+
+<ScrollyCoding>
+
+## !!steps Start with a Minimal Host Model
+Let’s start small. We’ll set up a tiny `hosts` table with just the basics, then improve it as we go.
+
+```typescript !
+import { pgTable, text, uuid } from "drizzle-orm/pg-core";
+
+// !mark(1:9) #22c55e
+// Minimal model (we'll replace inline UUID/timestamps with shared utils soon)
+export const hosts = pgTable("hosts", {
+  id: uuid("id").primaryKey().notNull(), // !callout[/uuid\("id"\)\.primaryKey/] #22c55e Branded UUID PK in DB
+  createdAt: text("createdAt").notNull(), // placeholder; will be timestamp via shared cols
+  updatedAt: text("updatedAt").notNull(), // placeholder; will be timestamp via shared cols
+  userId: uuid("userId").notNull().unique() // FK relation added next
+});
+```
+
+## !!steps Introduce Shared Columns Utility
+Now we’ll pull common pieces (UUIDs and timestamps) into a tiny helper so every table stays consistent.
+
+```typescript !
+import { timestamp, uuid } from "drizzle-orm/pg-core";
+
+// !mark(1:9) #22c55e
+// shared-cols.ts
+export const UuidCol = (name: string) => uuid(name); // !callout[/UuidCol/] #22c55e Branded UUID wrapper
+export const SharedColumns = {
+  id: UuidCol("id").primaryKey().notNull(),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow()
+};
+```
+
+## !!steps Apply Shared Columns and FK
+With that helper in place, let’s refactor the model to use it and hook up the `userId` foreign key.
+
+```typescript !
+// !collapse(1:10) collapsed
+// Previous step: Minimal Host Model (same file)
+import { pgTable, text, uuid } from "drizzle-orm/pg-core";
+
+export const hosts = pgTable("hosts", {
+  id: uuid("id").primaryKey().notNull(),
+  createdAt: text("createdAt").notNull(),
+  updatedAt: text("updatedAt").notNull(),
+  userId: uuid("userId").notNull().unique()
+});
+
+import {bigint, date, pgTable, text} from "drizzle-orm/pg-core";
+import {SharedColumns, UuidCol} from "./shared-cols";
+import {users} from "./user.model";
+
+// !mark(1:12) #22c55e
+export const hosts = pgTable("hosts", {
+  ...SharedColumns,
+  userId: UuidCol("userId")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" })
+});
+```
+
+## !!steps Finalize Model: Address and Social Links
+Time to grow the table to match the domain: we’ll add optional fields, address details, and social links.
+
+```typescript !
+// !collapse(1:12) collapsed
+// Previous step: Apply Shared Columns and FK (same file)
+import {bigint, date, pgTable, text} from "drizzle-orm/pg-core";
+import {SharedColumns, UuidCol} from "./shared-cols";
+import {users} from "./user.model";
+
+export const hosts = pgTable("hosts", {
+  ...SharedColumns,
+  userId: UuidCol("userId")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" })
+});
+
+import {bigint, date, pgTable, text} from "drizzle-orm/pg-core";
+import {SharedColumns, UuidCol} from "./shared-cols";
+import {users} from "./user.model";
+
+// !mark(1:23) #22c55e
+export const hosts = pgTable("hosts", {
+  ...SharedColumns,
+  userId: UuidCol("userId")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  dob: date("dob"),
+  phoneNumber: bigint("phoneNumber", { mode: "number" }),
+  // Address (value object in domain; flattened in DB)
+  country: text("country"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zipCode"),
+  address: text("address"),
+  // Social links (value object in domain; flattened in DB)
+  websiteLink: text("websiteLink"),
+  venmoLink: text("venmoLink"),
+  googleReviewLink: text("googleReviewLink"),
+  facebookLink: text("facebookLink"),
+  instagramLink: text("instagramLink"),
+  twitterLink: text("twitterLink"),
+  profileImage: text("profileImage")
+});
+
+// !collapse(1:4) collapsed
+// Types inferred from Drizzle (same file)
+export type HostModel = typeof hosts.$inferSelect;
+export type NewHostModel = typeof hosts.$inferInsert;
+```
+
+## !!steps Repository: Skeleton and Serialization
+Now for the repository. We’ll tuck the model away above and focus on one simple idea first: flatten nested domain objects with `toDbSerialized` before writing to the DB.
+
+```typescript !
+// !collapse(1:17) collapsed
+// Collapsed imports
+import {Host} from "@domain/entities/user/host.entity";
+import {
+  HostAlreadyExistsError,
+  HostDeleteError,
+  HostNotFoundError,
+  HostUpdateError
+} from "@domain/entities/user/host.error";
+import {HostRepository} from "@domain/entities/user/host.repository";
+import {and, count, eq, ilike, isNotNull, or} from "drizzle-orm";
+import {Effect as E, Option as O, pipe} from "effect";
+import {hosts} from "../models";
+import type {HostQueryDTO} from "@domain/entities/user/host.repository";
+import type {RepositoryEffect} from "@domain/utils/base.repository";
+import type {Paginated, PaginationOptions} from "@domain/utils/pagination";
+import type {UUID} from "@domain/utils/refined.types";
+import type {HostModel} from "../models";
+
+// !mark(1:16) #22c55e
+type DrizzleDB = any;
+
+export class HostDrizzleRepository extends HostRepository {
+  constructor(private readonly db: DrizzleDB) { super(); }
+
+  // Flatten nested domain VO(s) to table columns
+  toDbSerialized(host: Host): E.Effect<any, HostNotFoundError, never> {
+    return pipe(
+      host.serialized(),
+      E.map((s) => {
+        const { address, socialLinks, ...base } = s;
+        return { ...base, ...address, ...socialLinks };
+      })
+    );
+  }
+}
+```
+
+## !!steps Add: Insert Method (add)
+Let’s add the first write method. `add` serializes the entity and inserts it, with clear Effect-based error handling.
+
+```typescript !
+// !collapse(1:17) collapsed
+// Collapsed imports
+import {Host} from "@domain/entities/user/host.entity";
+import {
+  HostAlreadyExistsError,
+  HostDeleteError,
+  HostNotFoundError,
+  HostUpdateError
+} from "@domain/entities/user/host.error";
+import {HostRepository} from "@domain/entities/user/host.repository";
+import {and, count, eq, ilike, isNotNull, or} from "drizzle-orm";
+import {Effect as E, Option as O, pipe} from "effect";
+import {hosts} from "../models";
+import type {HostQueryDTO} from "@domain/entities/user/host.repository";
+import type {RepositoryEffect} from "@domain/utils/base.repository";
+import type {Paginated, PaginationOptions} from "@domain/utils/pagination";
+import type {UUID} from "@domain/utils/refined.types";
+import type {HostModel} from "../models";
+
+type DrizzleDB = any;
+
+export class HostDrizzleRepository extends HostRepository {
+  constructor(private readonly db: DrizzleDB) { super(); }
+
+  // !collapse(1:10) collapsed
+  // Collapsed toDbSerialized  
+  toDbSerialized(host: Host): E.Effect<any, HostNotFoundError, never> {
+    return pipe(
+      host.serialized(),
+      E.map((s) => {
+        const { address, socialLinks, ...base } = s;
+        return { ...base, ...address, ...socialLinks };
+      })
+    );
+  }
+
+  // !mark(1:12) #22c55e
+  add(host: Host): RepositoryEffect<Host, HostAlreadyExistsError> {
+    return pipe(
+      this.toDbSerialized(host),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.insert(hosts).values(dbData),
+          catch: () => new HostAlreadyExistsError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+}
+```
+
+## !!steps Add: Update Method
+Next up, `update`. We make sure the record exists, serialize it, and persist the changes.
+
+```typescript !
+// !collapse(1:17) collapsed
+// Collapsed imports
+import {Host} from "@domain/entities/user/host.entity";
+import {
+  HostAlreadyExistsError,
+  HostDeleteError,
+  HostNotFoundError,
+  HostUpdateError
+} from "@domain/entities/user/host.error";
+import {HostRepository} from "@domain/entities/user/host.repository";
+import {and, count, eq, ilike, isNotNull, or} from "drizzle-orm";
+import {Effect as E, Option as O, pipe} from "effect";
+import {hosts} from "../models";
+import type {HostQueryDTO} from "@domain/entities/user/host.repository";
+import type {RepositoryEffect} from "@domain/utils/base.repository";
+import type {Paginated, PaginationOptions} from "@domain/utils/pagination";
+import type {UUID} from "@domain/utils/refined.types";
+import type {HostModel} from "../models";
+
+type DrizzleDB = any;
+
+export class HostDrizzleRepository extends HostRepository {
+  constructor(private readonly db: DrizzleDB) { super(); }
+
+  // !collapse(1:10) collapsed
+  // Collapsed toDbSerialized  
+  toDbSerialized(host: Host): E.Effect<any, HostNotFoundError, never> {
+    return pipe(
+      host.serialized(),
+      E.map((s) => {
+        const { address, socialLinks, ...base } = s;
+        return { ...base, ...address, ...socialLinks };
+      })
+    );
+  }
+
+  // !collapse(1:13) collapsed
+  // Collapsed add  
+  add(host: Host): RepositoryEffect<Host, HostAlreadyExistsError> {
+    return pipe(
+      this.toDbSerialized(host),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.insert(hosts).values(dbData),
+          catch: () => new HostAlreadyExistsError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !mark(1:13) #22c55e
+  update(host: Host): RepositoryEffect<Host, HostUpdateError> {
+    return pipe(
+      this.ensureExists(host.id),
+      E.flatMap(() => this.toDbSerialized(host)),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.update(hosts).set(dbData).where(eq(hosts.id, host.id)),
+          catch: () => new HostUpdateError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !mark(1:11) #22c55e
+  // Helper methods needed by update
+  exists(hostId: UUID): RepositoryEffect<boolean, HostNotFoundError> {
+    return pipe(
+      E.tryPromise({
+        try: (): Promise<Pick<HostModel, "id">[]> =>
+          this.db.select({ id: hosts.id }).from(hosts).where(eq(hosts.id, hostId)).limit(1),
+        catch: () => new HostNotFoundError(hostId)
+      }),
+      E.map((result) => result.length > 0)
+    );
+  }
+
+  // !mark(1:11) #22c55e
+  ensureExists(hostId: UUID): E.Effect<void, HostNotFoundError> {
+    return pipe(
+      this.exists(hostId),
+      E.flatMap((exists) =>
+        E.if(exists, {
+          onTrue: () => E.succeed(undefined),
+          onFalse: () => E.fail(new HostNotFoundError(hostId))
+        })
+      )
+    );
+  }
+}
+
+
+```
+
+ 
+
+## !!steps Fetch: By User ID
+A small read operation by `userId`, returning an `Option` when nothing is found.
+
+```typescript !
+// !collapse(1:17) collapsed
+// Collapsed imports
+import {Host} from "@domain/entities/user/host.entity";
+import {
+  HostAlreadyExistsError,
+  HostDeleteError,
+  HostNotFoundError,
+  HostUpdateError
+} from "@domain/entities/user/host.error";
+import {HostRepository} from "@domain/entities/user/host.repository";
+import {and, count, eq, ilike, isNotNull, or} from "drizzle-orm";
+import {Effect as E, Option as O, pipe} from "effect";
+import {hosts} from "../models";
+import type {HostQueryDTO} from "@domain/entities/user/host.repository";
+import type {RepositoryEffect} from "@domain/utils/base.repository";
+import type {Paginated, PaginationOptions} from "@domain/utils/pagination";
+import type {UUID} from "@domain/utils/refined.types";
+import type {HostModel} from "../models";
+
+type DrizzleDB = any;
+
+export class HostDrizzleRepository extends HostRepository {
+  constructor(private readonly db: DrizzleDB) { super(); }
+
+  // !collapse(1:10) collapsed
+  // Collapsed toDbSerialized  
+  toDbSerialized(host: Host): E.Effect<any, HostNotFoundError, never> {
+    return pipe(
+      host.serialized(),
+      E.map((s) => {
+        const { address, socialLinks, ...base } = s;
+        return { ...base, ...address, ...socialLinks };
+      })
+    );
+  }
+
+  // !collapse(1:13) collapsed
+  // Collapsed add  
+  add(host: Host): RepositoryEffect<Host, HostAlreadyExistsError> {
+    return pipe(
+      this.toDbSerialized(host),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.insert(hosts).values(dbData),
+          catch: () => new HostAlreadyExistsError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !collapse(1:14) collapsed
+  // Collapsed update  
+  update(host: Host): RepositoryEffect<Host, HostUpdateError> {
+    return pipe(
+      this.ensureExists(host.id),
+      E.flatMap(() => this.toDbSerialized(host)),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.update(hosts).set(dbData).where(eq(hosts.id, host.id)),
+          catch: () => new HostUpdateError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !collapse(1:11) collapsed
+  // Collapsed exists
+  exists(hostId: UUID): RepositoryEffect<boolean, HostNotFoundError> {
+    return pipe(
+      E.tryPromise({
+        try: (): Promise<Pick<HostModel, "id">[]> =>
+          this.db.select({ id: hosts.id }).from(hosts).where(eq(hosts.id, hostId)).limit(1),
+        catch: () => new HostNotFoundError(hostId)
+      }),
+      E.map((result) => result.length > 0)
+    );
+  }
+  
+  // !collapse(1:12) collapsed
+  // Collapsed ensureExists
+  ensureExists(hostId: UUID): E.Effect<void, HostNotFoundError> {
+    return pipe(
+      this.exists(hostId),
+      E.flatMap((exists) =>
+        E.if(exists, {
+          onTrue: () => E.succeed(undefined),
+          onFalse: () => E.fail(new HostNotFoundError(hostId))
+        })
+      )
+    );
+  }
+
+  // !mark(1:5) #22c55e
+  fetchByUserId(userId: UUID): RepositoryEffect<O.Option<Host>, HostNotFoundError> {
+    return this.fetchSingle(() =>
+      this.db.select().from(hosts).where(eq(hosts.userId, userId)).limit(1)
+    );
+  }
+
+  // !mark(1:46) #22c55e
+  // Helper methods needed by fetchByUserId (executeQuery, createEntity, fetchSingle)
+  executeQuery<T>(query: () => Promise<T>): E.Effect<T, HostNotFoundError> {
+    return E.tryPromise({
+      try: query,
+      catch: () => new HostNotFoundError()
+    });
+  }
+
+  createEntity(hostData: HostModel): E.Effect<Host, HostNotFoundError> {
+    const serializedHost = {
+      ...hostData,
+      address: {
+        country: hostData.country,
+        city: hostData.city,
+        state: hostData.state,
+        zipCode: hostData.zipCode,
+        address: hostData.address
+      },
+      socialLinks: {
+        websiteLink: hostData.websiteLink,
+        venmoLink: hostData.venmoLink,
+        googleReviewLink: hostData.googleReviewLink,
+        facebookLink: hostData.facebookLink,
+        instagramLink: hostData.instagramLink,
+        twitterLink: hostData.twitterLink
+      }
+    };
+
+    return pipe(
+      Host.create(serializedHost),
+      E.mapError(() => new HostNotFoundError())
+    );
+  }
+
+  fetchSingle(query: () => Promise<HostModel[]>): E.Effect<O.Option<Host>, HostNotFoundError> {
+    return pipe(
+      this.executeQuery(query),
+      E.map(O.fromIterable),
+      E.flatMap((option) =>
+        O.match(option, {
+          onNone: () => E.succeed(O.none()),
+          onSome: (hostData) => pipe(this.createEntity(hostData), E.map(O.some))
+        })
+      )
+    );
+  }
+}
+```
+
+ 
+
+## !!steps Fetch: By Phone Number
+Fetch many by phone number. This shows how we reuse our list-fetch helper.
+
+```typescript !
+// !collapse(1:17) collapsed
+// Collapsed imports
+import {Host} from "@domain/entities/user/host.entity";
+import {
+  HostAlreadyExistsError,
+  HostDeleteError,
+  HostNotFoundError,
+  HostUpdateError
+} from "@domain/entities/user/host.error";
+import {HostRepository} from "@domain/entities/user/host.repository";
+import {and, count, eq, ilike, isNotNull, or} from "drizzle-orm";
+import {Effect as E, Option as O, pipe} from "effect";
+import {hosts} from "../models";
+import type {HostQueryDTO} from "@domain/entities/user/host.repository";
+import type {RepositoryEffect} from "@domain/utils/base.repository";
+import type {Paginated, PaginationOptions} from "@domain/utils/pagination";
+import type {UUID} from "@domain/utils/refined.types";
+import type {HostModel} from "../models";
+
+type DrizzleDB = any;
+
+export class HostDrizzleRepository extends HostRepository {
+  constructor(private readonly db: DrizzleDB) { super(); }
+
+  // !collapse(1:10) collapsed
+  // Collapsed toDbSerialized  
+  toDbSerialized(host: Host): E.Effect<any, HostNotFoundError, never> {
+    return pipe(
+      host.serialized(),
+      E.map((s) => {
+        const { address, socialLinks, ...base } = s;
+        return { ...base, ...address, ...socialLinks };
+      })
+    );
+  }
+
+  // !collapse(1:13) collapsed
+  // Collapsed add  
+  add(host: Host): RepositoryEffect<Host, HostAlreadyExistsError> {
+    return pipe(
+      this.toDbSerialized(host),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.insert(hosts).values(dbData),
+          catch: () => new HostAlreadyExistsError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !collapse(1:14) collapsed
+  // Collapsed update  
+  update(host: Host): RepositoryEffect<Host, HostUpdateError> {
+    return pipe(
+      this.ensureExists(host.id),
+      E.flatMap(() => this.toDbSerialized(host)),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.update(hosts).set(dbData).where(eq(hosts.id, host.id)),
+          catch: () => new HostUpdateError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !collapse(1:6) collapsed
+  // Collapsed fetchByUserId  
+  fetchByUserId(userId: UUID): RepositoryEffect<O.Option<Host>, HostNotFoundError> {
+    return this.fetchSingle(() =>
+      this.db.select().from(hosts).where(eq(hosts.userId, userId)).limit(1)
+    );
+  }
+
+  // !collapse(1:46) collapsed
+  // Collapsed helper methods (executeQuery, createEntity, fetchSingle)  
+  executeQuery<T>(query: () => Promise<T>): E.Effect<T, HostNotFoundError> {
+    return E.tryPromise({
+      try: query,
+      catch: () => new HostNotFoundError()
+    });
+  }
+
+  createEntity(hostData: HostModel): E.Effect<Host, HostNotFoundError> {
+    const serializedHost = {
+      ...hostData,
+      address: {
+        country: hostData.country,
+        city: hostData.city,
+        state: hostData.state,
+        zipCode: hostData.zipCode,
+        address: hostData.address
+      },
+      socialLinks: {
+        websiteLink: hostData.websiteLink,
+        venmoLink: hostData.venmoLink,
+        googleReviewLink: hostData.googleReviewLink,
+        facebookLink: hostData.facebookLink,
+        instagramLink: hostData.instagramLink,
+        twitterLink: hostData.twitterLink
+      }
+    };
+
+    return pipe(
+      Host.create(serializedHost),
+      E.mapError(() => new HostNotFoundError())
+    );
+  }
+
+  fetchSingle(query: () => Promise<HostModel[]>): E.Effect<O.Option<Host>, HostNotFoundError> {
+    return pipe(
+      this.executeQuery(query),
+      E.map(O.fromIterable),
+      E.flatMap((option) =>
+        O.match(option, {
+          onNone: () => E.succeed(O.none()),
+          onSome: (hostData) => pipe(this.createEntity(hostData), E.map(O.some))
+        })
+      )
+    );
+  }
+
+  // !mark(1:6) #22c55e
+  fetchByPhoneNumber(phoneNumber: number): RepositoryEffect<readonly Host[], HostNotFoundError> {
+    return this.fetchMultiple(
+      () => this.db.select().from(hosts).where(eq(hosts.phoneNumber, phoneNumber)),
+      phoneNumber
+    );
+  }
+
+  // !mark(1:10) #22c55e
+  // Helper method needed by fetchByPhoneNumber
+  fetchMultiple(
+    query: () => Promise<HostModel[]>,
+    identifier: unknown
+  ): E.Effect<readonly Host[], HostNotFoundError> {
+    return pipe(
+      this.executeQuery(query),
+      E.flatMap((results) => E.all(results.map((row) => this.createEntity(row))))
+    );
+  }
+}
+```
+
+ 
+
+## !!steps Fetch: Complete Profiles
+Let’s build a filtered, paginated query. “Complete profiles” have all the fields we care about.
+
+```typescript !
+// !collapse(1:17) collapsed
+// Collapsed imports
+import {Host} from "@domain/entities/user/host.entity";
+import {
+  HostAlreadyExistsError,
+  HostDeleteError,
+  HostNotFoundError,
+  HostUpdateError
+} from "@domain/entities/user/host.error";
+import {HostRepository} from "@domain/entities/user/host.repository";
+import {and, count, eq, ilike, isNotNull, or} from "drizzle-orm";
+import {Effect as E, Option as O, pipe} from "effect";
+import {hosts} from "../models";
+import type {HostQueryDTO} from "@domain/entities/user/host.repository";
+import type {RepositoryEffect} from "@domain/utils/base.repository";
+import type {Paginated, PaginationOptions} from "@domain/utils/pagination";
+import type {UUID} from "@domain/utils/refined.types";
+import type {HostModel} from "../models";
+
+type DrizzleDB = any;
+
+export class HostDrizzleRepository extends HostRepository {
+  constructor(private readonly db: DrizzleDB) { super(); }
+
+  // !collapse(1:10) collapsed
+  // Collapsed toDbSerialized  
+  toDbSerialized(host: Host): E.Effect<any, HostNotFoundError, never> {
+    return pipe(
+      host.serialized(),
+      E.map((s) => {
+        const { address, socialLinks, ...base } = s;
+        return { ...base, ...address, ...socialLinks };
+      })
+    );
+  }
+
+  // !collapse(1:13) collapsed
+  // Collapsed add  
+  add(host: Host): RepositoryEffect<Host, HostAlreadyExistsError> {
+    return pipe(
+      this.toDbSerialized(host),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.insert(hosts).values(dbData),
+          catch: () => new HostAlreadyExistsError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !collapse(1:14) collapsed
+  // Collapsed update  
+  update(host: Host): RepositoryEffect<Host, HostUpdateError> {
+    return pipe(
+      this.ensureExists(host.id),
+      E.flatMap(() => this.toDbSerialized(host)),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.update(hosts).set(dbData).where(eq(hosts.id, host.id)),
+          catch: () => new HostUpdateError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !collapse(1:11) collapsed
+  // Collapsed exists
+  exists(hostId: UUID): RepositoryEffect<boolean, HostNotFoundError> {
+    return pipe(
+      E.tryPromise({
+        try: (): Promise<Pick<HostModel, "id">[]> =>
+          this.db.select({ id: hosts.id }).from(hosts).where(eq(hosts.id, hostId)).limit(1),
+        catch: () => new HostNotFoundError(hostId)
+      }),
+      E.map((result) => result.length > 0)
+    );
+  }
+
+  // !collapse(1:12) collapsed
+  // Collapsed ensureExists
+  ensureExists(hostId: UUID): E.Effect<void, HostNotFoundError> {
+    return pipe(
+      this.exists(hostId),
+      E.flatMap((exists) =>
+        E.if(exists, {
+          onTrue: () => E.succeed(undefined),
+          onFalse: () => E.fail(new HostNotFoundError(hostId))
+        })
+      )
+    );
+  }
+
+  // !collapse(1:6) collapsed
+  // Collapsed fetchByUserId  
+  fetchByUserId(userId: UUID): RepositoryEffect<O.Option<Host>, HostNotFoundError> {
+    return this.fetchSingle(() =>
+      this.db.select().from(hosts).where(eq(hosts.userId, userId)).limit(1)
+    );
+  }
+
+  // !collapse(1:46) collapsed
+  // Collapsed helper methods (executeQuery, createEntity, fetchSingle)
+  executeQuery<T>(query: () => Promise<T>): E.Effect<T, HostNotFoundError> {
+    return E.tryPromise({
+      try: query,
+      catch: () => new HostNotFoundError()
+    });
+  }
+
+  createEntity(hostData: HostModel): E.Effect<Host, HostNotFoundError> {
+    const serializedHost = {
+      ...hostData,
+      address: {
+        country: hostData.country,
+        city: hostData.city,
+        state: hostData.state,
+        zipCode: hostData.zipCode,
+        address: hostData.address
+      },
+      socialLinks: {
+        websiteLink: hostData.websiteLink,
+        venmoLink: hostData.venmoLink,
+        googleReviewLink: hostData.googleReviewLink,
+        facebookLink: hostData.facebookLink,
+        instagramLink: hostData.instagramLink,
+        twitterLink: hostData.twitterLink
+      }
+    };
+
+    return pipe(
+      Host.create(serializedHost),
+      E.mapError(() => new HostNotFoundError())
+    );
+  }
+
+  fetchSingle(query: () => Promise<HostModel[]>): E.Effect<O.Option<Host>, HostNotFoundError> {
+    return pipe(
+      this.executeQuery(query),
+      E.map(O.fromIterable),
+      E.flatMap((option) =>
+        O.match(option, {
+          onNone: () => E.succeed(O.none()),
+          onSome: (hostData) => pipe(this.createEntity(hostData), E.map(O.some))
+        })
+      )
+    );
+  }
+
+  // !collapse(1:6) collapsed
+  // Collapsed fetchByPhoneNumber  
+  fetchByPhoneNumber(phoneNumber: number): RepositoryEffect<readonly Host[], HostNotFoundError> {
+    return this.fetchMultiple(
+      () => this.db.select().from(hosts).where(eq(hosts.phoneNumber, phoneNumber)),
+      phoneNumber
+    );
+  }
+
+  // !collapse(1:10) collapsed
+  // Collapsed fetchMultiple
+  fetchMultiple(
+    query: () => Promise<HostModel[]>,
+    identifier: unknown
+  ): E.Effect<readonly Host[], HostNotFoundError> {
+    return pipe(
+      this.executeQuery(query),
+      E.flatMap((results) => E.all(results.map((row) => this.createEntity(row))))
+    );
+  }
+
+  // !mark(1:32) #22c55e
+  fetchWithCompleteProfiles(options: PaginationOptions): RepositoryEffect<Paginated<Host>, HostNotFoundError> {
+    return pipe(
+      E.tryPromise({
+        try: async () => {
+          const offset = (options.pageNum - 1) * options.pageSize;
+          const whereCondition = and(
+            isNotNull(hosts.dob),
+            isNotNull(hosts.phoneNumber),
+            isNotNull(hosts.profileImage)
+          );
+          const [data, totalResult] = await Promise.all([
+            this.db.select().from(hosts).where(whereCondition).limit(options.pageSize).offset(offset),
+            this.db.select({ count: count() }).from(hosts).where(whereCondition)
+          ]);
+          return { data: data as HostModel[], total: totalResult[0]?.count || 0, options };
+        },
+        catch: () => new HostNotFoundError()
+      }),
+      E.flatMap(({ data, total, options }) =>
+        E.all(data.map((row) => this.createEntity(row))).pipe(
+          E.map((items) => ({
+            data: items,
+            total,
+            pageNum: options.pageNum,
+            pageSize: options.pageSize,
+            totalPages: Math.ceil(total / options.pageSize)
+          }))
+        )
+      )
+    );
+  }
+}
+```
+
+## !!steps Fetch: Flexible Query
+A flexible search: combine text search, filters, and pagination in one place.
+
+```typescript !
+// !collapse(1:17) collapsed
+// Collapsed imports
+import {Host} from "@domain/entities/user/host.entity";
+import {
+  HostAlreadyExistsError,
+  HostDeleteError,
+  HostNotFoundError,
+  HostUpdateError
+} from "@domain/entities/user/host.error";
+import {HostRepository} from "@domain/entities/user/host.repository";
+import {and, count, eq, ilike, isNotNull, or} from "drizzle-orm";
+import {Effect as E, Option as O, pipe} from "effect";
+import {hosts} from "../models";
+import type {HostQueryDTO} from "@domain/entities/user/host.repository";
+import type {RepositoryEffect} from "@domain/utils/base.repository";
+import type {Paginated, PaginationOptions} from "@domain/utils/pagination";
+import type {UUID} from "@domain/utils/refined.types";
+import type {HostModel} from "../models";
+
+type DrizzleDB = any;
+
+export class HostDrizzleRepository extends HostRepository {
+  constructor(private readonly db: DrizzleDB) { super(); }
+
+  // !collapse(1:10) collapsed
+  // Collapsed toDbSerialized  
+  toDbSerialized(host: Host): E.Effect<any, HostNotFoundError, never> {
+    return pipe(
+      host.serialized(),
+      E.map((s) => {
+        const { address, socialLinks, ...base } = s;
+        return { ...base, ...address, ...socialLinks };
+      })
+    );
+  }
+
+  // !collapse(1:13) collapsed
+  // Collapsed add  
+  add(host: Host): RepositoryEffect<Host, HostAlreadyExistsError> {
+    return pipe(
+      this.toDbSerialized(host),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.insert(hosts).values(dbData),
+          catch: () => new HostAlreadyExistsError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !collapse(1:14) collapsed
+  // Collapsed update  
+  update(host: Host): RepositoryEffect<Host, HostUpdateError> {
+    return pipe(
+      this.ensureExists(host.id),
+      E.flatMap(() => this.toDbSerialized(host)),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.update(hosts).set(dbData).where(eq(hosts.id, host.id)),
+          catch: () => new HostUpdateError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !collapse(1:6) collapsed
+  // Collapsed fetchByUserId  
+  fetchByUserId(userId: UUID): RepositoryEffect<O.Option<Host>, HostNotFoundError> {
+    return this.fetchSingle(() =>
+      this.db.select().from(hosts).where(eq(hosts.userId, userId)).limit(1)
+    );
+  }
+
+  // !collapse(1:7) collapsed
+  // Collapsed fetchByPhoneNumber  
+  fetchByPhoneNumber(phoneNumber: number): RepositoryEffect<readonly Host[], HostNotFoundError> {
+    return this.fetchMultiple(
+      () => this.db.select().from(hosts).where(eq(hosts.phoneNumber, phoneNumber)),
+      phoneNumber
+    );
+  }
+
+  // !collapse(1:32) collapsed
+  // Collapsed fetchWithCompleteProfiles  
+  fetchWithCompleteProfiles(options: PaginationOptions): RepositoryEffect<Paginated<Host>, HostNotFoundError> {
+    return pipe(
+      E.tryPromise({
+        try: async () => {
+          const offset = (options.pageNum - 1) * options.pageSize;
+          const whereCondition = and(
+            isNotNull(hosts.dob),
+            isNotNull(hosts.phoneNumber),
+            isNotNull(hosts.profileImage)
+          );
+          const [data, totalResult] = await Promise.all([
+            this.db.select().from(hosts).where(whereCondition).limit(options.pageSize).offset(offset),
+            this.db.select({ count: count() }).from(hosts).where(whereCondition)
+          ]);
+          return { data: data as HostModel[], total: totalResult[0]?.count || 0, options };
+        },
+        catch: () => new HostNotFoundError()
+      }),
+      E.flatMap(({ data, total, options }) =>
+        E.all(data.map((row) => this.createEntity(row))).pipe(
+          E.map((items) => ({
+            data: items,
+            total,
+            pageNum: options.pageNum,
+            pageSize: options.pageSize,
+            totalPages: Math.ceil(total / options.pageSize)
+          }))
+        )
+      )
+    );
+  }
+
+  // !mark(1:36) #22c55e
+  fetchByQuery(dto: HostQueryDTO): RepositoryEffect<Paginated<Host>, HostNotFoundError> {
+    return pipe(
+      E.tryPromise({
+        try: async () => {
+          const { search, country, city, paginationOptions = { pageNum: 1, pageSize: 10 } } = dto;
+          const offset = (paginationOptions.pageNum - 1) * paginationOptions.pageSize;
+
+          const conditions = [];
+          if (search) conditions.push(or(ilike(hosts.userId, `%${search}%`), ilike(hosts.profileImage, `%${search}%`)));
+          if (country) conditions.push(eq(hosts.country, country));
+          if (city) conditions.push(eq(hosts.city, city));
+
+          const whereCondition = conditions.length ? and(...conditions) : undefined;
+
+          const [data, totalResult] = await Promise.all([
+            this.db.select().from(hosts).where(whereCondition).limit(paginationOptions.pageSize).offset(offset),
+            this.db.select({ count: count() }).from(hosts).where(whereCondition)
+          ]);
+
+          return { data: data as HostModel[], total: totalResult[0]?.count || 0, paginationOptions };
+        },
+        catch: () => new HostNotFoundError()
+      }),
+      E.flatMap(({ data, total, paginationOptions }) =>
+        E.all(data.map((row) => this.createEntity(row))).pipe(
+          E.map((items) => ({
+            data: items,
+            total,
+            pageNum: paginationOptions.pageNum,
+            pageSize: paginationOptions.pageSize,
+            totalPages: Math.ceil(total / paginationOptions.pageSize)
+          }))
+        )
+      )
+    );
+  }
+}
+```
+
+## !!steps Remove: Delete by ID
+Finally, delete by id: check it exists, then remove it.
+
+```typescript !
+// !collapse(1:17) collapsed
+// Collapsed imports
+import {Host} from "@domain/entities/user/host.entity";
+import {
+  HostAlreadyExistsError,
+  HostDeleteError,
+  HostNotFoundError,
+  HostUpdateError
+} from "@domain/entities/user/host.error";
+import {HostRepository} from "@domain/entities/user/host.repository";
+import {and, count, eq, ilike, isNotNull, or} from "drizzle-orm";
+import {Effect as E, Option as O, pipe} from "effect";
+import {hosts} from "../models";
+import type {HostQueryDTO} from "@domain/entities/user/host.repository";
+import type {RepositoryEffect} from "@domain/utils/base.repository";
+import type {Paginated, PaginationOptions} from "@domain/utils/pagination";
+import type {UUID} from "@domain/utils/refined.types";
+import type {HostModel} from "../models";
+
+type DrizzleDB = any;
+
+export class HostDrizzleRepository extends HostRepository {
+  constructor(private readonly db: DrizzleDB) { super(); }
+
+  // !collapse(1:10) collapsed
+  // Collapsed toDbSerialized  
+  toDbSerialized(host: Host): E.Effect<any, HostNotFoundError, never> {
+    return pipe(
+      host.serialized(),
+      E.map((s) => {
+        const { address, socialLinks, ...base } = s;
+        return { ...base, ...address, ...socialLinks };
+      })
+    );
+  }
+
+  // !collapse(1:13) collapsed
+  // Collapsed add  
+  add(host: Host): RepositoryEffect<Host, HostAlreadyExistsError> {
+    return pipe(
+      this.toDbSerialized(host),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.insert(hosts).values(dbData),
+          catch: () => new HostAlreadyExistsError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !collapse(1:16) collapsed
+  // Collapsed update  
+  update(host: Host): RepositoryEffect<Host, HostUpdateError> {
+    return pipe(
+      this.ensureExists(host.id),
+      E.flatMap(() => this.toDbSerialized(host)),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.update(hosts).set(dbData).where(eq(hosts.id, host.id)),
+          catch: () => new HostUpdateError(host.id)
+        })
+      ),
+      E.as(host)
+    );
+  }
+
+  // !collapse(1:6) collapsed
+  // Collapsed fetchByUserId  
+  fetchByUserId(userId: UUID): RepositoryEffect<O.Option<Host>, HostNotFoundError> {
+    return this.fetchSingle(() =>
+      this.db.select().from(hosts).where(eq(hosts.userId, userId)).limit(1)
+    );
+  }
+
+  // !collapse(1:7) collapsed
+  // Collapsed fetchByPhoneNumber  
+  fetchByPhoneNumber(phoneNumber: number): RepositoryEffect<readonly Host[], HostNotFoundError> {
+    return this.fetchMultiple(
+      () => this.db.select().from(hosts).where(eq(hosts.phoneNumber, phoneNumber)),
+      phoneNumber
+    );
+  }
+
+  // !collapse(1:32) collapsed
+  // Collapsed fetchWithCompleteProfiles  
+  fetchWithCompleteProfiles(options: PaginationOptions): RepositoryEffect<Paginated<Host>, HostNotFoundError> {
+    return pipe(
+      E.tryPromise({
+        try: async () => {
+          const offset = (options.pageNum - 1) * options.pageSize;
+          const whereCondition = and(
+            isNotNull(hosts.dob),
+            isNotNull(hosts.phoneNumber),
+            isNotNull(hosts.profileImage)
+          );
+          const [data, totalResult] = await Promise.all([
+            this.db.select().from(hosts).where(whereCondition).limit(options.pageSize).offset(offset),
+            this.db.select({ count: count() }).from(hosts).where(whereCondition)
+          ]);
+          return { data: data as HostModel[], total: totalResult[0]?.count || 0, options };
+        },
+        catch: () => new HostNotFoundError()
+      }),
+      E.flatMap(({ data, total, options }) =>
+        E.all(data.map((row) => this.createEntity(row))).pipe(
+          E.map((items) => ({
+            data: items,
+            total,
+            pageNum: options.pageNum,
+            pageSize: options.pageSize,
+            totalPages: Math.ceil(total / options.pageSize)
+          }))
+        )
+      )
+    );
+  }
+
+  // !collapse(1:37) collapsed
+  // Collapsed fetchByQuery  
+  fetchByQuery(dto: HostQueryDTO): RepositoryEffect<Paginated<Host>, HostNotFoundError> {
+    return pipe(
+      E.tryPromise({
+        try: async () => {
+          const { search, country, city, paginationOptions = { pageNum: 1, pageSize: 10 } } = dto;
+          const offset = (paginationOptions.pageNum - 1) * paginationOptions.pageSize;
+
+          const conditions = [];
+          if (search) conditions.push(or(ilike(hosts.userId, `%${search}%`), ilike(hosts.profileImage, `%${search}%`)));
+          if (country) conditions.push(eq(hosts.country, country));
+          if (city) conditions.push(eq(hosts.city, city));
+
+          const whereCondition = conditions.length ? and(...conditions) : undefined;
+
+          const [data, totalResult] = await Promise.all([
+            this.db.select().from(hosts).where(whereCondition).limit(paginationOptions.pageSize).offset(offset),
+            this.db.select({ count: count() }).from(hosts).where(whereCondition)
+          ]);
+
+          return { data: data as HostModel[], total: totalResult[0]?.count || 0, paginationOptions };
+        },
+        catch: () => new HostNotFoundError()
+      }),
+      E.flatMap(({ data, total, paginationOptions }) =>
+        E.all(data.map((row) => this.createEntity(row))).pipe(
+          E.map((items) => ({
+            data: items,
+            total,
+            pageNum: paginationOptions.pageNum,
+            pageSize: paginationOptions.pageSize,
+            totalPages: Math.ceil(total / paginationOptions.pageSize)
+          }))
+        )
+      )
+    );
+  }
+
+  // !mark(1:12) #22c55e
+  remove(hostId: UUID): RepositoryEffect<boolean, HostDeleteError> {
+    return pipe(
+      this.ensureExists(hostId),
+      E.flatMap(() =>
+        E.tryPromise({
+          try: () => this.db.delete(hosts).where(eq(hosts.id, hostId)),
+          catch: () => new HostDeleteError(hostId)
+        })
+      ),
+      E.as(true)
+    );
+  }
+}
+```
+
+
+</ScrollyCoding>
+
+### Key Lessons
+
+1. **Shared Column Patterns**: Use utility functions like `UuidCol()` and `SharedColumns` to ensure consistency across all tables and reduce duplication of common fields like ID, timestamps.
+
+2. **Domain-to-DB Serialization**: Flatten nested domain value objects (like `address` and `socialLinks`) into individual table columns using `toDbSerialized()` for optimal database storage.
+
+3. **Effect-Based Repository Pattern**: Compose operations using Effect's `pipe`, `E.tryPromise`, and `E.flatMap` for type-safe error handling and predictable data flow throughout the repository layer.
+
+4. **Helper Method Composition**: Break complex operations into focused helpers (`executeQuery`, `createEntity`, `fetchSingle`, `fetchMultiple`) that can be composed for different query patterns.
+
+5. **Entity Reconstruction**: Transform flat database rows back into rich domain entities by reconstructing nested value objects during the `createEntity` process.
+
+6. **Validation at Boundaries**: Use `ensureExists()` for write operations and proper error types (`HostNotFoundError`, `HostUpdateError`) to maintain data integrity and clear error semantics.

@@ -161,7 +161,7 @@ export default function HomePage() {
             {/* Build Your Own X Card - Larger position */}
             <GridItem
               area="md:[grid-area:4/1/7/7]"
-              href="/docs/build-your-own-x/cloud-architectural-patterns"
+              href="/docs/build-your-own-x/cloud-architectural-patterns/circuitbreaker"
               icon={
                 <svg className="w-5 h-5 text-black dark:text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -172,10 +172,10 @@ export default function HomePage() {
                 <div className="space-y-4">
                   <p className="text-sm">Hands-on tutorials to build fundamental systems from scratch - DNS clients, rate limiters, websockets, and more.</p>
                   <div className="flex flex-col gap-2">
-                    <Link href="/docs/build-your-own-x/networking" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Networking</Link>
-                    <Link href="/docs/build-your-own-x/cloud-architectural-patterns" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Cloud Patterns</Link>
-                    <Link href="/docs/build-your-own-x/graphics" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Graphics</Link>
-                    <Link href="/docs/build-your-own-x/frontend" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Frontend</Link>
+                    <Link href="/docs/build-your-own-x/networking/dns_client" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Networking</Link>
+                    <Link href="/docs/build-your-own-x/cloud-architectural-patterns/circuitbreaker" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Cloud Patterns</Link>
+                    <Link href="/docs/build-your-own-x/graphics/interpolation" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Graphics</Link>
+                    <Link href="/docs/build-your-own-x/frontend/virtual_dom" className="text-sm px-3 py-2 rounded-lg transition-all duration-200 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300 dark:hover:text-lime-300 dark:hover:bg-emerald-800/40">→ Frontend</Link>
                   </div>
                 </div>
               }
