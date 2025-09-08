@@ -2,101 +2,149 @@
 title: POS Application
 ---
 
-## Scope
+## Project Overview
+
+Build a modern Point of Sale (POS) application that integrates with Square's POS system to provide a complete retail experience. The application should handle product management, cart operations, and checkout processes.
 
 [Explore Square POS APIs](https://squareup.com/us/en)
 
-### Authentication
+## Core Features
 
-* Implement OAuth-based login using Square's authentication system.
-* Utilize NextAuth.js for handling authentication:
-* Configure NextAuth to work with Square's OAuth provider.
-* Set up NextAuth API routes and handle callbacks.
-* Implement session management using NextAuth's built-in functionality.
-* Ensure proper SSR authentication:
-* Use NextAuth for server-side authentication checks.
-* Implement client-side authentication state management using NextAuth's useSession hook.
-* Set up protected routes and API endpoints using NextAuth middleware.
-* Implement secure logout functionality.
+### User Authentication
 
-### Product Listing
+* Users must authenticate before accessing the POS system
+* Secure login and logout functionality
+* Session management with automatic timeout handling
+* Protected access to sensitive operations and data
+* Role-based access control if multiple user types are supported
 
-* The homepage should display a list of products using Server-Side Rendering (SSR).
-* User should be able to search and apply filters to the products.
-* Each product card should show:
-  * Name
-  * Price
-  * Image
-  * Product Variants
-  * "Add to Cart" button
-* Allow users to increase or decrease product quantity directly on the card.
-* After clicking "Add to Cart," replace the button with quantity controls (+/- buttons).
+### Product Management
 
-### Checkout Management
+* Display a comprehensive list of available products
+* Search functionality to quickly find specific products
+* Filtering options to narrow down product selections
+* Each product should display:
+  * Product name
+  * Current price and any price variations
+  * Product image
+  * Available variants
+* Intuitive product selection and quantity management
 
+### Shopping Cart
 
-1. Users should be able to add products to their cart.
-2. The cart should be accessible from a side drawer, showing a list of added items.
-3. Quantity can be changed from the cart for any individual product
-4. Discounts
+* Add products to cart with specified quantities
+* Modify quantities of items already in cart
+* Remove items from cart
+* Persistent cart state during user session
+* Clear visual indication of cart contents and total items
 
-   
-   1. Users should have the option to apply discounts to individual items or the entire order.
-   2. If a discount currently applied at the order level is removed from an individual item, then the respective discount no longer remains an order level discount and should be applied on the remaining items individually.
-   3. Discounts should be retrieved from an API and displayed as options during the checkout process.
-   4. The application should recalculate the order amount dynamically when discounts are applied.
-5. Taxes
+### Discount System
 
-   
-   1. Users should be able to toggle taxes on/off for individual items or the entire order to see the amounts with and without taxes.
-   2. If a tax currently applied at the order level is removed from an individual item, then the respective tax no longer remains an order level tax and should be applied on the remaining items individually.
-   3. Tax options should be retrieved from an API and displayed during the checkout process.
-   4. The application should recalculate the order amount dynamically when tax settings are changed.
+* Apply discounts to individual items or entire orders
+* Support for percentage-based and fixed-amount discounts
+* Dynamic discount calculation and display
+* Intelligent handling of order-level vs item-level discounts:
+  * When an order-level discount is removed from individual items, automatically convert to item-level discounts for remaining products
+* Real-time price updates when discounts are applied or removed
 
-### Payment Processing
+### Tax Management
 
-* Display a summary of selected items, applied discounts, and taxes in the checkout.
-* Implement order calculation using Next.js server actions.
-* Provide a button to confirm and place the order.
-* Handle order confirmation and display appropriate success messages.
+* Toggle tax application on individual items or entire orders
+* Display prices both with and without taxes
+* Support for multiple tax rates and types
+* Intelligent handling of order-level vs item-level taxes:
+  * When an order-level tax is removed from individual items, automatically apply to remaining products individually
+* Real-time tax calculations and display
+
+### Checkout and Payment
+
+* Comprehensive order summary showing in the cart:
+  * Selected items with quantities
+  * Applied discounts and their values
+  * Tax calculations and totals
+  * Final order amount
+* Order confirmation process
+* Success confirmation with order details
+* Error handling for failed transactions
+
+## Technical Requirements
+
+### Performance Requirements
+
+* Fast initial page load times
+* Responsive user interface across all device types
+* Efficient data fetching and caching strategies
+* Smooth animations and transitions
+* Optimized images and assets
+
+### Security Requirements
+
+* Secure authentication and authorization
+* Protected API endpoints and sensitive data
+* Safe handling of payment information
+* Protection against common web vulnerabilities
+* Secure storage of user sessions and tokens
+
+### User Experience Requirements
+
+* Intuitive and accessible user interface
+* Clear error messages and recovery paths
+* Loading states and progress indicators
+* Responsive design for mobile and desktop
+* Consistent visual design language
 
 ## Implementation Guidelines
 
-### Square POS Integration
+### Authentication Implementation
 
-* Use Next.js server actions to integrate directly with Square POS APIs.
-* Implement functions for product retrieval, discount and tax options, and order processing.
-* Ensure Square API calls are made securely using authenticated sessions.
-* Use services to separate API logic from components, and apply the Dependency Inversion Principle (DIP) to depend on abstractions for improved flexibility.
+* Implement OAuth-based login using Square's authentication system
+* Utilize NextAuth.js for handling authentication:
+  * Configure NextAuth to work with Square's OAuth provider
+  * Set up NextAuth API routes and handle callbacks
+  * Implement session management using NextAuth's built-in functionality
+* Ensure proper SSR authentication:
+  * Use NextAuth for server-side authentication checks
+  * Implement client-side authentication state management using NextAuth's useSession hook
+  * Set up protected routes and API endpoints using NextAuth middleware
+* Implement secure logout functionality
 
-### User Interface
+### API Integration
 
-* Ensure the UI is responsive and provides a seamless experience across devices.
-* Use appropriate loading indicators (e.g., spinners, skeletons) during data fetching.
-* Implement a consistent UI for login/logout functionality.
+* Use Next.js server actions to integrate directly with Square POS APIs
+* Implement functions for product retrieval, discount and tax options, and order processing
+* Ensure Square API calls are made securely using authenticated sessions
+* Use services to separate API logic from components, and apply the Dependency Inversion Principle (DIP) to depend on abstractions for improved flexibility
+
+### User Interface Implementation
+
+* The homepage should display a list of products using Server-Side Rendering (SSR)
+* Implement the cart as a side drawer for easy access
+* Use appropriate loading indicators (e.g., spinners, skeletons) during data fetching
+* Ensure the UI is responsive and provides a seamless experience across devices
+* After clicking "Add to Cart," replace the button with quantity controls (+/- buttons)
 
 ### Server-Side Rendering (SSR)
 
-* Implement SSR for the homepage product listing.
-* Use streaming UI concepts for products added to the cart to improve initial load times.
-* Utilize NextAuth for authentication checks in SSR pages.
+* Implement SSR for the homepage product listing
+* Use streaming UI concepts for products added to the cart to improve initial load times
+* Utilize NextAuth for authentication checks in SSR pages
 
 ### Error Handling
 
-* Implement error boundaries for the SSR page to gracefully handle rendering errors.
-* Provide meaningful error messages and fallback UI for various error scenarios.
-* Handle authentication errors gracefully, redirecting to login when necessary.
+* Implement error boundaries for the SSR page to gracefully handle rendering errors
+* Provide meaningful error messages and fallback UI for various error scenarios
+* Handle authentication errors gracefully, redirecting to login when necessary
 
 ### Code Structure
 
-* Organize code modularly, following Next.js best practices.
-* Centralize NextAuth configuration and custom hooks for authentication.
+* Organize code modularly, following Next.js best practices
+* Centralize NextAuth configuration and custom hooks for authentication
 
-### Security
+### Security Implementation
 
-* Leverage NextAuth's built-in security features for token handling and session management.
-* Implement additional security measures to protect against common web vulnerabilities.
-* Ensure secure handling of Square API credentials and tokens.
+* Leverage NextAuth's built-in security features for token handling and session management
+* Implement additional security measures to protect against common web vulnerabilities
+* Ensure secure handling of Square API credentials and tokens
 
 ## Implementation
 
@@ -118,7 +166,7 @@ Expectations:
 
 * Project structure follows Next.js best practices for TypeScript projects.
 * Pallas UI components are properly configured and themed using options provided by Pallas UI (and custom Panda CSS tokens, if necessary).
-* ESLint and Prettier are set up with appropriate rules.
+* Biome set up with appropriate rules.
 * NextAuth is fully integrated with Square OAuth:
 * Users can log in and out seamlessly.
 * Protected routes are properly secured.
@@ -129,23 +177,21 @@ Expectations:
 
 Tasks:
 
-
-1. Create an intuitive UI to list down all the products coming from square.
-2. Implement product search and filtering functionality.
-3. Develop the shopping cart as a side drawer.
-4. Use [Tanstack react query](https://tanstack.com/query/latest/docs/react/overview) for data fetching and caching.
+1. Create an intuitive UI to list down all the products coming from Square
+2. Implement product search and filtering functionality
+3. Develop the shopping cart as a side drawer
+4. Use [Tanstack React Query](https://tanstack.com/query/latest/docs/react/overview) for data fetching and caching
 
 Expectations:
 
-* Homepage renders server-side for optimal performance.
-* Create a custom product card component using Pallas UI tokens.
-* Product search and filtering are fast and accurate.
-* Use streaming UI patterns to progressively display content and components to enhance perceived performance.
-* React Query is properly implemented for efficient data management.
-* All operations are secure and respect the user's authentication status.
-* Implement well-defined component [patterns](https://outline.carbonteq.com/s/a124241a-28a7-479b-8268-405f36743850) (container/layout/UI) and use composition to build a modular and maintainable [codebase](https://github.com/Yacouri/reactjs-folders-boilerplate/tree/master/src).
-* No global state management library is used; rely on React's built-in state management and context API if necessary.
-
+* Homepage renders server-side for optimal performance
+* Create a custom product card component using Pallas UI tokens
+* Product search and filtering are fast and accurate
+* Use streaming UI patterns to progressively display content and components to enhance perceived performance
+* React Query is [properly implemented](https://tanstack.com/query/v4/docs/framework/react/guides/ssr) for efficient data management
+* All operations are secure and respect the user's authentication status
+* Implement well-defined component [patterns](/docs/best-practices/frontend/architecture/overview) (container/layout/UI) and use composition to build a modular and maintainable [codebase](/docs/best-practices/frontend/architecture/overview#architecture-breakdown)
+* No global state management library is used; rely on React's built-in state management and context API if necessary
 
 <Aside type="info">
 Explore different design aesthetics such as minimalism, neo-brutalism, and glassmorphism. Find inspirations on design platforms like [Dribbble](https://dribbble.com/) or [Behance](https://www.behance.net/).
@@ -157,65 +203,58 @@ Refactor the codebase to separate side-effects and API calls from components.
 
 Tasks:
 
-
-1. Implement the checkout process with discounts and taxes.
-2. Create custom hooks for business logic (e.g., applying discounts/taxes).
+1. Implement the checkout process with discounts and taxes
+2. Create custom hooks for business logic (e.g., applying discounts/taxes)
 
 Expectations:
 
-* Checkout process is smooth and intuitive.
-* Discounts and taxes are correctly applied and calculated.
-* Custom hooks encapsulate complex business logic, making it reusable and testable.
-* [Follow immutability practices consistently throughout the application to ensure data integrity and predictable behavior.](https://react.dev/learn/adding-interactivity)
-* State management relies on React's built-in features (useState, useReducer) rather than external libraries.
+* Checkout process is smooth and intuitive
+* Discounts and taxes are correctly applied and calculated
+* Create at least one discount item that can be applied to only one specific variant of the item.
+* Custom hooks encapsulate complex business logic, making it reusable and testable
+* [Follow immutability practices consistently throughout the application to ensure data integrity and predictable behavior](https://react.dev/learn/adding-interactivity)
+* State management relies on React's built-in features (useState, useReducer) rather than external libraries
 
 ### Phase 4: Optimization and Testing
 
 Tasks:
 
-
-1. Utilize a third-party library, such as [Zustand](https://docs.pmnd.rs/zustand/getting-started/introduction), to move local state management logic to a global state.
-2. Implement error boundaries for the SSR page.
-3. Configure [React Scan](https://react-scan.com/) and use it to find areas to optimize rendering.
-4. Optimize performance using Next.js image optimization, font optimization and other techniques.
-5. Configure [React Compiler](https://react.dev/learn/react-compiler) in your project. Build the application with React Compiler enabled.
-6. Use React Scan to compare the performance of your unoptimized and optimized implementations, both with React Compiler enabled and disabled.
-7. Write unit tests for key components, including NextAuth integration.
-8. Develop end-to-end tests for critical user journeys, including login/logout flows.
-9. Perform security audit, focusing on authentication and API integrations.
+1. Utilize a third-party library, such as [Zustand](https://docs.pmnd.rs/zustand/getting-started/introduction), to move local state management logic to a global state
+2. Implement error boundaries for the SSR page
+3. Configure [React Scan](https://react-scan.com/) and use it to find areas to optimize rendering
+4. Optimize performance using Next.js image optimization, font optimization and other techniques
+5. Configure [React Compiler](https://react.dev/learn/react-compiler) in your project. Build the application with React Compiler enabled
+6. Use React Scan to compare the performance of your unoptimized and optimized implementations, both with React Compiler enabled and disabled
+7. Write unit tests for key components, including NextAuth integration
+8. Develop end-to-end tests for critical user journeys, including login/logout flows
+9. Perform security audit, focusing on authentication and API integrations
 
 Expectations:
 
-* Error boundaries gracefully handle and log SSR errors.
-* Images are optimized for different devices and network conditions.
-* Key components have comprehensive unit tests with good coverage.
-* End-to-end tests cover all critical user flows, ensuring a robust user experience.
-* Security audit reveals no critical vulnerabilities; any found issues are addressed promptly.
-* Performance metrics (Core Web Vitals) meet or exceed industry standards.
-
- 
-
+* Error boundaries gracefully handle and log SSR errors
+* Images are optimized for different devices and network conditions
+* Key components have comprehensive unit tests with good coverage
+* End-to-end tests cover all critical user flows, ensuring a robust user experience
+* Security audit reveals no critical vulnerabilities; any found issues are addressed promptly
+* Performance metrics (Core Web Vitals) meet or exceed industry standards
 
 <Aside type="tip">
-Explore [middleware](https://nextjs.org/docs/pages/building-your-application/deploying#middleware) in Next
+Explore [middleware](https://nextjs.org/docs/pages/building-your-application/deploying#middleware) in Next.js for advanced routing and authentication handling.
 </Aside>
 
-
 <Aside type="info">
-Explore [ImmerJs](https://immerjs.github.io/immer/), [NextJs image optimization](https://nextjs.org/docs/pages/building-your-application/deploying#image-optimization)
+Explore [ImmerJs](https://immerjs.github.io/immer/) for immutable state updates, [Next.js image optimization](https://nextjs.org/docs/pages/building-your-application/deploying#image-optimization) for better performance.
 
-Develop understanding of web vitals
+Develop understanding of Web Vitals and performance metrics.
 </Aside>
 
 ## Additional Considerations
 
-* Explore advanced NextAuth features like callbacks and events for custom behavior.
-* Implement proper error logging and monitoring (e.g., Sentry integration).
-* Ensure adherence to Web Vitals for optimal performance.
-* Regularly review and update NextAuth configuration to adhere to best practices.
+* Explore advanced NextAuth features like callbacks and events for custom behavior
+* Implement proper error logging and monitoring (e.g., Sentry integration)
+* Ensure adherence to Web Vitals for optimal performance
+* Regularly review and update NextAuth configuration to adhere to best practices
 
- 
+## Extras
 
-## Extra’s
-
-* Signals
+* Explore Signals for reactive state management
