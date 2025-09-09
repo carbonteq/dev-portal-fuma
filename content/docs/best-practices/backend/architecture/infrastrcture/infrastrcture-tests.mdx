@@ -1,0 +1,416 @@
+---
+title: Infrastructure Testing
+description: Setup and patterns for repository/infrastructure integration tests with Drizzle + Effect + Vitest
+---
+
+import { ScrollyCoding } from "@/components/ui/ScrollyCoding";
+
+## Infrastructure Testing Overview
+### What we test
+- **CRUD**: `add`, `fetchByUserId`, `update`, `remove`
+- **Queries**: `existsByUserId`, `fetchByPhoneNumber`, `fetchWithCompleteProfiles` (pagination)
+- **Edge cases**: non-existent `userId`, unique `userId` constraint, cascade delete
+- **Serialization**: nested VOs flattened to columns (address, social links)
+
+<ScrollyCoding>
+
+## !!steps Spin up a fresh DB and repository (per test)
+Before each test, we boot a disposable database, instantiate the repository, and wipe tables so every run starts from zero. After each test, we clean up the database resources. In short: `beforeEach(async () => { ... })` brings up a clean state, and `afterEach(async () => { ... })` tears it down.
+
+```typescript !
+import { beforeEach, afterEach } from "vitest";
+import { HostDrizzleRepository } from "../../app/infrastrcture/db/drizzle/repositories/host.drizzle.repository";
+import { setupTestDatabase, cleanupDatabase } from "../setup/database";
+
+describe("HostDrizzleRepository Integration", () => {
+  let testDb: TestDatabase;
+  let hostRepository: HostDrizzleRepository;
+
+  beforeEach(async () => {
+    testDb = await setupTestDatabase();
+    hostRepository = new HostDrizzleRepository(testDb.db);
+    await cleanupDatabase(testDb.db); // start clean
+  });
+
+  afterEach(async () => {
+    await testDb.cleanup();
+  });
+});
+```
+
+
+
+## !!steps First Test: Basic CREATE and READ Testing
+Verifies `add(...)` persists and `fetchByUserId(...)` returns `Option.Some` with the same entity.
+
+```typescript !
+// !collapse(1:10) collapsed
+// Collapsed imports
+import { Effect as E, Option as O } from "effect";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { HostDrizzleRepository } from "../../app/infrastrcture/db/drizzle/repositories/host.drizzle.repository";
+import { createTestHostEntity, createTestUser } from "../factories";
+import { cleanupDatabase, setupTestDatabase } from "../setup/database";
+
+import type { UUID } from "../../app/domain/utils/refined.types";
+import type { TestDatabase } from "../setup/database";
+
+describe("HostDrizzleRepository Integration", () => {
+  let testDb: TestDatabase;
+  let hostRepository: HostDrizzleRepository;
+
+  // !collapse(1:10) collapsed
+  // Collapsed beforeEach and afterEach
+  beforeEach(async () => {
+    testDb = await setupTestDatabase();
+    hostRepository = new HostDrizzleRepository(testDb.db);
+    await cleanupDatabase(testDb.db);
+  });
+
+  afterEach(async () => {
+    await testDb.cleanup();
+  });
+
+  it("should add and fetch host by userId", async () => {
+    const user = await createTestUser(testDb.db, { email: "host-test-1@example.com" });
+
+    const hostEntity = E.runSync(
+      createTestHostEntity({
+        userId: user.id,
+        address: {
+          country: "USA",
+          city: "Test City",
+          state: "CA",
+          zipCode: "12345",
+          address: "123 Test St"
+        },
+        socialLinks: {
+          websiteLink: "https://test.com",
+          venmoLink: "@testuser",
+          googleReviewLink: null,
+          facebookLink: null,
+          instagramLink: null,
+          twitterLink: null
+        }
+      })
+    );
+
+    const addedHost = await E.runPromise(hostRepository.add(hostEntity));
+    expect(addedHost.userId).toBe(user.id);
+
+    const fetchedOpt = await E.runPromise(hostRepository.fetchByUserId(user.id as UUID));
+    expect(O.isSome(fetchedOpt)).toBe(true);
+
+    const fetched = O.getOrThrow(fetchedOpt);
+    expect(fetched.userId).toBe(user.id);
+    expect(fetched.id).toBe(hostEntity.id);
+  });
+});
+```
+
+## !!steps Update: change fields and persist
+Uses `update(...)` to change persisted fields and re-fetches to assert the mutations are saved.
+
+```typescript !
+// !collapse(1:8) collapsed
+// Collapsed imports
+import { Effect as E, Option as O } from "effect";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { HostDrizzleRepository } from "../../app/infrastrcture/db/drizzle/repositories/host.drizzle.repository";
+import { createTestHostEntity, createTestUser } from "../factories";
+import { cleanupDatabase, setupTestDatabase } from "../setup/database";
+import type { UUID } from "../../app/domain/utils/refined.types";
+import type { TestDatabase } from "../setup/database";
+
+describe("HostDrizzleRepository Integration", () => {
+  let testDb: TestDatabase;
+  let hostRepository: HostDrizzleRepository;
+
+  // !collapse(1:10) collapsed
+  // Collapsed beforeEach and afterEach
+  beforeEach(async () => {
+    testDb = await setupTestDatabase();
+    hostRepository = new HostDrizzleRepository(testDb.db);
+    await cleanupDatabase(testDb.db);
+  });
+
+  afterEach(async () => {
+    await testDb.cleanup();
+  });
+
+  it("should update host", async () => {
+    const user = await createTestUser(testDb.db, { email: "host-test-2@example.com" });
+    const hostEntity = E.runSync(createTestHostEntity({
+      userId: user.id,
+      phoneNumber: 5551234567,
+      profileImage: "/profiles/original.jpg"
+    }));
+
+    await E.runPromise(hostRepository.add(hostEntity));
+
+    const updatedHost = E.runSync(createTestHostEntity({
+      ...E.runSync(hostEntity.serialized()),
+      phoneNumber: 5559876543,
+      profileImage: "/profiles/updated.jpg"
+    }));
+
+    const result = await E.runPromise(hostRepository.update(updatedHost));
+    expect(result.phoneNumber).toBe(5559876543);
+
+    const fetchedOpt = await E.runPromise(hostRepository.fetchByUserId(user.id as UUID));
+    const fetched = O.getOrThrow(fetchedOpt);
+    expect(fetched.phoneNumber).toBe(5559876543);
+    expect(fetched.profileImage).toBe("/profiles/updated.jpg");
+  });
+});
+```
+
+## !!steps Query by phone number
+Exercises `fetchByPhoneNumber(...)`: expects a non-empty list containing the created host.
+
+```typescript !
+// !collapse(1:8) collapsed
+// Collapsed imports
+import { Effect as E, Option as O } from "effect";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { HostDrizzleRepository } from "../../app/infrastrcture/db/drizzle/repositories/host.drizzle.repository";
+import { createTestHostEntity, createTestUser } from "../factories";
+import { cleanupDatabase, setupTestDatabase } from "../setup/database";
+import type { UUID } from "../../app/domain/utils/refined.types";
+import type { TestDatabase } from "../setup/database";
+
+describe("HostDrizzleRepository Integration", () => {
+  let testDb: TestDatabase;
+  let hostRepository: HostDrizzleRepository;
+
+  // !collapse(1:10) collapsed
+  // Collapsed beforeEach and afterEach
+  beforeEach(async () => {
+    testDb = await setupTestDatabase();
+    hostRepository = new HostDrizzleRepository(testDb.db);
+    await cleanupDatabase(testDb.db);
+  });
+
+  afterEach(async () => {
+    await testDb.cleanup();
+  });
+
+  it("should fetch by phone number", async () => {
+    const user = await createTestUser(testDb.db, { email: "host-test-3@example.com" });
+    const phoneNumber = 5551112222;
+    const hostEntity = E.runSync(createTestHostEntity({ userId: user.id, phoneNumber }));
+    await E.runPromise(hostRepository.add(hostEntity));
+
+    const result = await E.runPromise(hostRepository.fetchByPhoneNumber(phoneNumber));
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.some(h => h.userId === user.id)).toBe(true);
+  });
+});
+```
+
+## !!steps Remove and verify deletion
+Calls `remove(id)` and verifies `fetchByUserId(...)` returns `Option.None` afterward.
+
+```typescript !
+// !collapse(1:8) collapsed
+// Collapsed imports
+import { Effect as E, Option as O } from "effect";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { HostDrizzleRepository } from "../../app/infrastrcture/db/drizzle/repositories/host.drizzle.repository";
+import { createTestHostEntity, createTestUser } from "../factories";
+import { cleanupDatabase, setupTestDatabase } from "../setup/database";
+import type { UUID } from "../../app/domain/utils/refined.types";
+import type { TestDatabase } from "../setup/database";
+
+describe("HostDrizzleRepository Integration", () => {
+  let testDb: TestDatabase;
+  let hostRepository: HostDrizzleRepository;
+
+  // !collapse(1:10) collapsed
+  // Collapsed beforeEach and afterEach
+  beforeEach(async () => {
+    testDb = await setupTestDatabase();
+    hostRepository = new HostDrizzleRepository(testDb.db);
+    await cleanupDatabase(testDb.db);
+  });
+
+  afterEach(async () => {
+    await testDb.cleanup();
+  });
+
+  it("should remove host", async () => {
+    const user = await createTestUser(testDb.db, { email: "host-test-4@example.com" });
+    const hostEntity = E.runSync(createTestHostEntity({ userId: user.id }));
+    await E.runPromise(hostRepository.add(hostEntity));
+
+    const removed = await E.runPromise(hostRepository.remove(hostEntity.id));
+    expect(removed).toBe(true);
+
+    const fetchedOpt = await E.runPromise(hostRepository.fetchByUserId(user.id as UUID));
+    expect(O.isNone(fetchedOpt)).toBe(true);
+  });
+});
+```
+
+## !!steps Existence check
+Validates `existsByUserId(...)` toggles from `false` to `true` after inserting a host.
+
+```typescript !
+// !collapse(1:8) collapsed
+// Collapsed imports
+import { Effect as E, Option as O } from "effect";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { HostDrizzleRepository } from "../../app/infrastrcture/db/drizzle/repositories/host.drizzle.repository";
+import { createTestHostEntity, createTestUser } from "../factories";
+import { cleanupDatabase, setupTestDatabase } from "../setup/database";
+import type { UUID } from "../../app/domain/utils/refined.types";
+import type { TestDatabase } from "../setup/database";
+
+describe("HostDrizzleRepository Integration", () => {
+  let testDb: TestDatabase;
+  let hostRepository: HostDrizzleRepository;
+
+  // !collapse(1:10) collapsed
+  // Collapsed beforeEach and afterEach
+  beforeEach(async () => {
+    testDb = await setupTestDatabase();
+    hostRepository = new HostDrizzleRepository(testDb.db);
+    await cleanupDatabase(testDb.db);
+  });
+
+  afterEach(async () => {
+    await testDb.cleanup();
+  });
+
+  it("should check if host exists by userId", async () => {
+    const user = await createTestUser(testDb.db, { email: "host-test-5@example.com" });
+    const hostEntity = E.runSync(createTestHostEntity({ userId: user.id }));
+
+    const existsBefore = await E.runPromise(hostRepository.existsByUserId(user.id as UUID));
+    expect(existsBefore).toBe(false);
+
+    await E.runPromise(hostRepository.add(hostEntity));
+
+    const existsAfter = await E.runPromise(hostRepository.existsByUserId(user.id as UUID));
+    expect(existsAfter).toBe(true);
+  });
+});
+```
+
+## !!steps Pagination: only complete profiles
+Ensures `fetchWithCompleteProfiles(...)` returns only hosts with complete profile fields (dob, phoneNumber, profileImage).
+
+```typescript !
+// !collapse(1:8) collapsed
+// Collapsed imports
+import { Effect as E, Option as O } from "effect";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { HostDrizzleRepository } from "../../app/infrastrcture/db/drizzle/repositories/host.drizzle.repository";
+import { createTestHostEntity, createTestUser } from "../factories";
+import { cleanupDatabase, setupTestDatabase } from "../setup/database";
+import type { UUID } from "../../app/domain/utils/refined.types";
+import type { TestDatabase } from "../setup/database";
+
+describe("HostDrizzleRepository Integration", () => {
+  let testDb: TestDatabase;
+  let hostRepository: HostDrizzleRepository;
+
+  // !collapse(1:10) collapsed
+  // Collapsed beforeEach and afterEach
+  beforeEach(async () => {
+    testDb = await setupTestDatabase();
+    hostRepository = new HostDrizzleRepository(testDb.db);
+    await cleanupDatabase(testDb.db);
+  });
+
+  afterEach(async () => {
+    await testDb.cleanup();
+  });
+
+  it("should fetch hosts with complete profiles", async () => {
+    const user1 = await createTestUser(testDb.db, { email: "host-test-6a@example.com" });
+    const user2 = await createTestUser(testDb.db, { email: "host-test-6b@example.com" });
+
+    const completeHost = E.runSync(createTestHostEntity({
+      userId: user1.id,
+      dob: new Date("1990-01-01"),
+      phoneNumber: 5551234567,
+      profileImage: "/profiles/complete.jpg"
+    }));
+
+    const incompleteHost = E.runSync(createTestHostEntity({
+      userId: user2.id,
+      dob: null,
+      phoneNumber: null,
+      profileImage: null
+    }));
+
+    await Promise.all([
+      E.runPromise(hostRepository.add(completeHost)),
+      E.runPromise(hostRepository.add(incompleteHost))
+    ]);
+
+    const page = await E.runPromise(
+      hostRepository.fetchWithCompleteProfiles({ pageNum: 1, pageSize: 10, offset: 0 })
+    );
+
+    expect(page.data.length).toBeGreaterThan(0);
+    expect(page.data.some(h => h.userId === user1.id)).toBe(true);
+    expect(page.data.some(h => h.userId === user2.id)).toBe(false);
+  });
+});
+```
+
+## !!steps Non-existent userId
+Checks `fetchByUserId(...)` for a non-existent UUID returns `Option.None`.
+
+```typescript !
+// !collapse(1:8) collapsed
+// Collapsed imports
+import { Effect as E, Option as O } from "effect";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { HostDrizzleRepository } from "../../app/infrastrcture/db/drizzle/repositories/host.drizzle.repository";
+import { createTestHostEntity, createTestUser } from "../factories";
+import { cleanupDatabase, setupTestDatabase } from "../setup/database";
+import type { UUID } from "../../app/domain/utils/refined.types";
+import type { TestDatabase } from "../setup/database";
+
+describe("HostDrizzleRepository Integration", () => {
+  let testDb: TestDatabase;
+  let hostRepository: HostDrizzleRepository;
+
+  // !collapse(1:10) collapsed
+  // Collapsed beforeEach and afterEach
+  beforeEach(async () => {
+    testDb = await setupTestDatabase();
+    hostRepository = new HostDrizzleRepository(testDb.db);
+    await cleanupDatabase(testDb.db);
+  });
+
+  afterEach(async () => {
+    await testDb.cleanup();
+  });
+
+  it("should return none for non-existent userId", async () => {
+    const nonExistentUserId = "550e8400-e29b-41d4-a716-446655440999" as UUID;
+    const fetchedOpt = await E.runPromise(hostRepository.fetchByUserId(nonExistentUserId));
+    expect(O.isNone(fetchedOpt)).toBe(true);
+  });
+});
+```
+
+</ScrollyCoding>
+
+## Running the tests
+- **Run**: `pnpm vitest` (or your workspace script)
+
+## Key Lessons
+
+- **Fresh DB per test**: Use `setupTestDatabase()` and `cleanupDatabase()` for isolation
+- **Test all CRUD**: Cover `add`, `fetch`, `update`, `remove` operations 
+- **Effect patterns**: Use `E.runPromise` for assertions, `E.runSync` for factories
+- **Option handling**: Verify `O.isSome` and `O.isNone` for repository results
+- **Edge cases**: Test non-existent data scenarios
+
+

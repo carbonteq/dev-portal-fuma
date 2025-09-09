@@ -2,6 +2,7 @@
   "title": "Infrastructure",
   "defaultOpen": true,
   "pages": [
-    "infrastrcture-overview"
+    "infrastrcture-overview",
+    "infrastrcture-tests"
   ]
 }
