@@ -90,9 +90,11 @@ and [domain services](#domain-service) are placed here, organized by [aggregates
 
 ### Application Layer
 
-App deals with the objects in the application layer, namely the [application services](#application-service),
-application results and [DTOs](#data-transfer-object). Transaction management, execution of work commands, handling of
-domain events and business process flows are all codified here.
+App deals with the objects in the application layer, namely the [workflows](#workflow) (use‑case orchestrators),
+application services (reusable helpers), application results and [DTOs](#data-transfer-object).
+Transaction management, execution of work commands, handling of domain events and business process flows are codified in
+workflows.
+
 
 ### Infrastructure (Not A Layer)
 
@@ -105,13 +107,13 @@ organizing all the adapters in one common place.
 
 Finally, we come to the outermost layer. It usually contains only the HTTP/web module (although depending on your
 application, you may also provide a CLI module). **The only job of this layer is to act as a kind of middleman between
-the application layer and the user, a thin wrapper abstracting away the data transport details**. The application
-services don't really care where the data is coming from, whether from a terminal, a file, an RPC call or over HTTP.
-That's not their concern. As long as data is reaching them in a valid form (courtesy of DTOs), they'll work with it
-happily and return the appropriate application result. The wrapping layer (web or CLI) will then convert the application
-result to the appropriate form based on the underlying transport mechanism, and send it to the client. E.g. if you get
-an Ok Result from the app service in your API's http controller, you'll unwrap the result data and maybe serialize it to
-JSON before sending it to the client, or if it's an Error Result, you'll return a 4xx/5xx response.
+the application layer and the user, a thin wrapper abstracting away the data transport details**. Workflows don't really
+care where the data is coming from, whether from a terminal, a file, an RPC call or over HTTP. That's not their
+concern. As long as data is reaching them in a valid form (courtesy of DTOs), they'll work with it happily and return
+the appropriate application result. The wrapping layer (web or CLI) will then convert the application result to the
+appropriate form based on the underlying transport mechanism, and send it to the client. E.g. if you get an Ok Result
+from the workflow in your API's http controller, you'll unwrap the result data and maybe serialize it to JSON before
+sending it to the client, or if it's an Error Result, you'll return a 4xx/5xx response.
 
 ## Resources
 
@@ -121,11 +123,18 @@ JSON before sending it to the client, or if it's an Error Result, you'll return 
 
 ## Glossary
 
-### Application Service
+### Workflow
 
-The application service is what presents an input for a use-case. It calls off to the domain for execution, calls any
-other services (like notifications) and returns. Application Services will typically use both Domain Services and
-Repositories to deal with external requests.
+A Workflow represents a single application use case. It orchestrates domain operations, defines transaction boundaries,
+coordinates calls to repositories and application services, and returns an application result. Workflows should be thin
+on infrastructure concerns and focus on sequencing domain behavior.
+
+<Aside type="tip">
+**Workflows vs Application Services**
+
+- Workflows are use cases. They orchestrate domain operations, enforce application policies and define transaction boundaries.
+- Application Services are reusable, stateless helpers used by workflows. They do not orchestrate domain logic; they exist for code reuse across workflows.
+</Aside>
 
 ### Data Transfer Object
 
@@ -148,13 +157,27 @@ First line of defense is validation of user input DTOs. `Request/Response` DTO c
 
 </Aside>
 
+
+
 ### Aggregate
 
 An aggregate is a set of domain objects, usually called Entities and Value Objects, that are considered as a single item
 inside our bounded context. One of the entities that make up the Aggregate is called the Aggregate Root or Root Entity.
 This entity owns all the others inside the aggregate. Other objects interact with the objects within the aggregate via
 the aggregate root, and never directly. A set of consistency rules ([invariants](#invariants)) applies within the
-Aggregate's boundaries.
+Aggregate's boundaries. The aggregate root also governs the lifecycle of its parts: child entities/value objects cannot
+outlive the root, are created/updated/removed through the root, and the aggregate is persisted and validated as a whole
+within a single transaction.
+
+<Aside type="tip">
+**Invoice as an Aggregate**
+
+`Invoice` is the aggregate root and `InvoiceLineItem` instances belong to it. Line items cannot exist without their
+`Invoice`; they are added or removed only through methods on the root.
+
+The root enforces invariants such as "total equals sum of line items" and "no new lines after the invoice is paid."
+Deleting an `Invoice` cascades to its line items, and external code never mutates an `InvoiceLineItem` directly.
+</Aside>
 
 ### Domain Events
 
@@ -203,7 +226,8 @@ Read More:
   more Entities.
 - Domain Services are used when putting the logic on a particular Entity would break encapsulation and require the
   Entity to know about things it really shouldn't be concerned with.
-- Domain services are very granular, while application services are a facade purposed with providing an API.
+- Domain services are very granular. Workflows orchestrate domain services and entities to realize a use case; application
+  services provide reusable helpers for workflows but should not orchestrate domain logic.
 - Domain services operate only on types belonging to the Domain. They contain meaningful concepts that can be found
   within the Ubiquitous Language. They hold operations that don't fit well into Value Objects or Entities.
 
@@ -220,6 +244,29 @@ Read More:
   - Must be consistent on creation, validate entities on creation and throw error on failure.
   - Try to update state using methods and execute invariant validation on each update if needed.
   - For optional properties and complex setups Fluent Interfaces, Factor Method and Builder Pattern can be used
+
+### Domain Errors
+
+Domain Errors represent violations of business rules and invariants inside the always-valid domain boundary.
+
+- Thrown only by domain objects (Aggregates, Entities, Value Objects, Domain Services) when a rule would be broken. Guards in the domain should throw domain errors to comply with Fail Fast and protect invariants.
+- Different from infrastructure/transport errors (IO, HTTP, DB). Domain errors model business semantics. The domain throws; the application layer catches and converts to an Application Result; the presentation maps to transport (e.g. HTTP 4xx).
+- Prefer specific error types over generic `Error`/strings; give each a stable name and optional code. Include only minimal diagnostic context (identifiers/values), never infrastructure concerns or formatting.
+- Do not perform logging or localization in the domain. Mapping, logging and user messages belong to outer layers.
+
+
+
+<Aside type="tip">
+
+Keep error names aligned with the ubiquitous language. Prefer specific names like `CannotTransferToSameAccount` over a generic `ValidationError`.
+
+Examples of domain errors:
+
+- Invariant violation: `InsufficientFundsError`
+- Policy violation: `DailyTransferLimitExceededError`
+- Invalid state transition: `OrderCannotBeShippedBeforePaidError`
+- Aggregate consistency: `LineItemNotInOrderError`
+</Aside>
 
 ### Repository
 
@@ -305,7 +352,6 @@ For preventing null/undefined values, empty objects and arrays, incorrect input 
 <Aside type="info">
 **Coming Soon**
 
-- Domain Errors
 - Adapters
 - Validation at compile time
 - Using Libraries inside application core
