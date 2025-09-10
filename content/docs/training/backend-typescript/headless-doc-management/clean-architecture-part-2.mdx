@@ -1,0 +1,106 @@
+---
+title: CA - Part 2
+description: Week 2 plan for the Headless Document Management System focusing on Application and HTTP layers with use cases, transactions, and API endpoints.
+---
+
+## Week 2 — Application + HTTP Layers
+
+### Day 6: Use Cases & DTOs (Application Layer)
+
+Build orchestrating use cases with input/output DTOs that compose domain entities and repositories. Focus on business workflows and transaction boundaries.
+
+**Tasks**:
+- Create application DTOs for commands (document creation, upload workflows, publishing) and queries (document retrieval, listing with filters).
+- Implement document creation workflow (metadata only, no file upload yet).
+- Implement upload workflow: initiate upload (return pre-signed URL), confirm upload (persist version with metadata).
+- Implement document operations: publish status transitions, access policy management, permission checking.
+- Build use cases that orchestrate domain services and repositories using Effect composition.
+
+**Acceptance**:
+- Use cases implemented with clear command/query DTOs and Effect-based error handling.
+- Business logic orchestrated without domain leakage; pure composition of domain services and repositories.
+
+**Expectations**:
+- Application layer stays clean: no HTTP, DB, or storage concerns; only orchestration.
+- Use cases accept commands/queries (DTOs) and return domain results via Effect.
+- DTOs are application-layer contracts; separate from domain entities and HTTP requests.
+- Idempotency considerations for upload confirmation (checksum + contentRef uniqueness).
+- Transaction boundaries identified but implementation can be simplified for training.
+
+### Day 7: Test Infrastructure & Integration Testing
+
+Setup comprehensive testing infrastructure and build integration tests for application workflows.
+
+**Tasks**:
+- Create test fixtures and factories for entities, DTOs, and test data generation.
+- Setup test database with Testcontainers; migration and seed scripts for isolated test runs.
+- Build integration tests for complete workflows (document creation → upload → publish flow).
+- Setup test utilities for repository testing and use case integration testing.
+
+**Acceptance**:
+- Test infrastructure supports isolated, repeatable test runs with clean database state.
+- Integration tests cover complete workflows and verify business logic end-to-end.
+
+**Expectations**:
+- Test fixtures provide realistic, deterministic test data for consistent test runs.
+- Integration tests focus on workflow behavior rather than implementation details.
+- Database isolation ensures tests don't interfere with each other; fast test execution.
+
+### Day 8: oRPC + Hono Integration
+
+Integrate oRPC with Hono runtime using Effect Schema for type-safe RPC procedures that directly consume application DTOs.
+
+**Tasks**:
+- Setup oRPC procedures for document management workflows (creation, upload, publishing, retrieval).
+- Setup oRPC procedures for querying (by slug, listing with filters, version history).
+- Use Effect Schema DTOs directly as oRPC input/output schemas for type safety.
+- Integrate with Hono runtime; setup oRPC handler with CORS and error mapping.
+- Implement workspace context extraction from headers and pass to use cases.
+
+**Acceptance**:
+- oRPC procedures implemented with Effect Schema validation using application DTOs.
+- Hono server running with oRPC handler; end-to-end type safety from client to use cases.
+
+**Expectations**:
+- oRPC procedures are thin wrappers: extract context, call use case with DTO, return result.
+- Effect Schema DTOs are reused directly in oRPC procedures (no separate HTTP schemas).
+- Standard schema compatibility allows seamless integration between Effect and oRPC.
+- Error mapping from domain/application errors to oRPC errors (UNAUTHORIZED, NOT_FOUND, etc.).
+- Workspace and user context extracted from JWT headers and passed to use cases.
+
+### Day 9: AuthZ & Observability
+
+Integrate workspace authentication, access control middleware, and observability patterns.
+
+**Tasks**:
+- Implement authentication middleware for JWT validation and workspace context extraction.
+- Integrate RBAC enforcement in use cases using domain access control services.
+- Add structured logging with correlation tracking and basic performance metrics.
+- Implement audit logging for critical document operations and access control changes.
+
+**Acceptance**:
+- Authentication middleware validates JWTs and extracts user/workspace context.
+- Access control enforced at use case level; unauthorized operations return 403.
+
+**Expectations**:
+- Authentication concerns remain in HTTP layer; use cases receive clean user context.
+- Audit logging captures essential information in structured format for compliance and debugging.
+- Observability implementation supports debugging and performance monitoring without impacting business logic.
+- Security practices: sanitized error responses, no sensitive data exposure in logs or external responses.
+
+### Day 10: Code Reflection & Manual Testing
+
+Reflect on the existing codebase, identify refactoring opportunities, and verify everything works through manual testing.
+
+**Tasks**:
+- Review codebase for reusable patterns; extract common utilities and shared abstractions.
+- Identify opportunities to consolidate similar logic across entities, guards, and use cases.
+- Refactor repetitive code into shared utilities; improve code organization and modularity.
+- Conduct manual testing of complete workflows through oRPC procedures to verify functionality.
+- Document any architectural insights and lessons learned during implementation.
+
+**Acceptance**:
+- Codebase demonstrates good separation of concerns with reusable components identified and extracted.
+- Manual testing confirms all major workflows function correctly end-to-end.
+
+See also: `content/docs/training/backend-typescript/headless-doc-management/index.mdx` for project scope and `clean-architecture-part-1.mdx` for domain foundation.

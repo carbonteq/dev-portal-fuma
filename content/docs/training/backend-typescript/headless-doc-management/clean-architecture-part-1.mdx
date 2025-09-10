@@ -1,0 +1,123 @@
+---
+title: CA - Part 1
+description: Week 1 plan for the Headless Document Management System focusing on Domain and Infrastructure with Effect and Drizzle.
+---
+
+## PreRequisites
+
+- **Refined Types**: Familiarity with [@carbonteq/refined-type](https://github.com/carbonteq/refined-type) for branded types and validation
+- **Effect**:
+  - [Effect basics](https://effect.website/docs/getting-started/the-effect-type) including [Creating](https://effect.website/docs/getting-started/creating-effects/) and [Running Effect](https://effect.website/docs/getting-started/running-effects/) along with [building pipelines](https://effect.website/docs/getting-started/building-pipelines/)
+  - [Option type](https://effect.website/docs/data-types/option) for handling nullable values
+  - [Control flow operators](https://effect.website/docs/guides/control-flow) (if, when, zip, all)
+  - [Error handling patterns](https://effect.website/docs/error-management/error-channel-operations/) in Effect
+- **Effect Schema**:
+  - [Basic Family of encoding/decoding](https://effect.website/docs/schema/introduction#understanding-decoding-and-encoding) and [type like primitives](https://effect.website/docs/schema/basic-usage#primitives), [Records and Structs](https://effect.website/docs/schema/basic-usage#structs)
+  - [Schema filters](https://effect.website/docs/schema/filtering) for validation
+  - [Schema transformations](https://effect.website/docs/schema/transformations), change data from one type to another.
+  - [Schema declarations and type derivation](https://effect.website/docs/schema/advanced-usage/#declaring-new-data-types), declaring new data types.
+
+## Week 1 — Domain + Infrastructure
+
+### Day 1: Entities & Value Objects (schema-first)
+
+Implement `Document` and `DocumentVersion` along with Value Objects to encapsulate invariants.
+
+**Tasks**:
+- Define schemas for core document entities with proper field types and optional properties.
+- Create value objects for domain-specific types like identifiers, checksums, and file references.
+
+**Acceptance**:
+- `Document` and `DocumentVersion` entities with value objects implemented and working.
+
+**References**: `domain-overview.mdx` (Option, guards-in-schema, static factory methods, serialization)
+
+**Expectations**:
+- Domain purity and immutability; no infrastructure concerns in entities/VOs; use private constructor + factories.
+- Entities vs Value Objects: invariants enforced via schema guards; value semantics for VOs.
+- Use rich objects instead of primitives and refined types; avoid null/undefined in domain types with Option/Effect.
+- Schema-first approach: derive types from Effect/Schema. Serialization symmetry: encode/decode round-trip holds.
+- Add refined types for IDs (UUID) and dates (DateTime) with proper schema declarations for encoding/decoding between domain and persistence layers.
+- Create dedicated guards and error files for domains (e.g., `document.guards.ts`, `document.errors.ts`) to maintain clear separation and reusability.
+
+### Day 2: Users and Access Policies
+
+Add `User` and `AccessPolicy` entities. Create a `DocumentAccessService` (domain service) to evaluate permissions.
+
+**Tasks**:
+- Create user entity with role-based access control fields and workspace associations.
+- Create access policy entity for managing permissions on resources with subject-based rules.
+- Define permission action types for different access levels.
+- Implement domain service for evaluating document access permissions using user and policy data.
+
+**Acceptance**:
+- `User` and `AccessPolicy` entities with proper guards and error handling.
+- `DocumentAccessService` domain service with permission evaluation logic.
+- Permission checks are pure (no IO) and deterministic; precedence: Admin > explicit subject policy > role policy > default deny.
+
+**Expectations**:
+- Domain service take User, AccessPolicy, and Document as input and return a boolean indicating if the user has the given permission.
+- Domain service stays in domain layer (pure functions or Effect without external dependencies).
+- Create dedicated guard and error files for User (`user.guards.ts`, `user.errors.ts`), AccessPolicy (`access-policy.guards.ts`, `access-policy.errors.ts`), and DocumentAccessService (`document-access.errors.ts`).
+
+### Day 3: Domain Unit Tests & Access Control
+
+Create test factories and comprehensive unit tests for entities and access control.
+
+**Tasks**:
+- Build test factories for all core entities with deterministic data generation.
+- Write entity-specific tests covering validation, creation, and serialization behavior.
+- Write domain service tests covering permission evaluation scenarios and access control rules.
+- Optional: property-based tests for domain invariants and edge cases.
+
+**Acceptance**:
+- Factories exist for all core entities; unit tests pass and cover happy/edge paths.
+- Domain coverage target met (≥ 90% lines/branches for entities and access service).
+
+**Expectations**:
+- Keep tests pure (no IO) for domain; use fakes/builders instead of DB.
+- Clear, minimal assertions that reflect behavior not implementation details.
+
+### Day 4: Drizzle Models, Migrations & Repository Contracts
+
+Create tables using shared columns; apply FKs, uniques, indexes. Define repository contracts (interfaces) with typed errors alongside pagination types.
+
+**Tasks**:
+- Create database tables for core entities with proper relationships and constraints.
+- Apply database constraints for data integrity, indexing for performance, and foreign key relationships.
+- Generate and run migrations; ensure type inference from schema definitions.
+- Define repository interfaces with effectful signatures, typed errors, and pagination support.
+
+**Acceptance**:
+- Migrations run cleanly; schema reflects domain; types inferred.
+- Testcontainers migration tests (up/down) pass.
+- Repository interfaces compile with effectful signatures and typed errors; no infra leakage.
+
+**References**: `infrastrcture-overview.mdx` (SharedColumns, FK)
+
+**Expectations**:
+- SharedColumns and app-generated UUIDs are mandatory.
+- Correct relational constraints: FKs, unique(slug, workspaceId), indexes, check(version >= 1).
+- Drizzle proficiency: inferred types, reversible migrations, basic seeding approach.
+- Repository boundaries: effectful interfaces only; typed errors; pagination contracts (`Paginated<T>` output).
+
+### Day 5: Repository Implementations + Infra Test Day
+
+Implement Drizzle repositories and complete integration tests.
+
+**Tasks**:
+- Implement serialization helpers for transforming domain entities to/from database format.
+- Implement repository methods for CRUD operations, querying, and data retrieval with pagination.
+- Create seed datasets for integration testing; verify query performance and index usage.
+
+**Acceptance**:
+- E2E round-trip: create document → add version → fetch latest → update → list.
+- Integration tests green against Postgres Testcontainers; coverage targets met (Domain ≥ 90%, Repos ≥ 80%).
+
+**Expectations**:
+- Queries leverage proper indexes; avoid unnecessary sequential scans.
+- Integration tests run against real Postgres with Testcontainers; deterministic seeds.
+- Repository layer achieves target coverage; assertions focus on behavior, not implementation.
+
+See also: `content/docs/training/backend-typescript/headless-doc-management.mdx` for overlapping expectations (RBAC, UUID strategy, validation, pagination, controller/service separation).
+

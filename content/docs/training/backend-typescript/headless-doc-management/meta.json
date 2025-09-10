@@ -1,0 +1,8 @@
+{
+  "title": "Headless Document Management",
+  "defaultOpen": true,
+  "pages": [
+    "clean-architecture-part-1",
+    "clean-architecture-part-2"
+  ]
+}
