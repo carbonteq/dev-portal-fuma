@@ -1,0 +1,74 @@
+---
+title: "Comparison"
+description: "Side-by-side comparison of chatbot-based vs workflow-based LLM architectures"
+---
+
+import Aside from '@/components/ui/Aside';
+
+# Architecture Comparison
+
+<Aside type="tip" title="Decision Guide">
+Use this comparison to understand when to choose each architecture and how building blocks behave differently in each approach.
+</Aside>
+
+## Quick Decision Matrix
+
+| Factor | Chatbot-Based | Workflow-Based |
+|--------|---------------|----------------|
+| **Primary Use Case** | Real-time conversation | Multi-step business processes |
+| **Latency** | < 2.5s response time | Minutes to hours |
+| **User Interaction** | Interactive, conversational | Batch processing, async |
+| **Complexity** | Simple to moderate | Moderate to high |
+| **Audit Requirements** | Basic logging | Full audit trails |
+| **Human-in-the-Loop** | Optional | Often required |
+| **Scalability** | High concurrent users | High throughput processing |
+
+## Detailed Comparison
+
+### Use Cases
+
+#### Chatbot-Based
+* **Customer support** and help desks
+* **Interactive assistants** and virtual agents
+* **Real-time Q&A** systems
+* **Conversational interfaces** for applications
+* **Educational tutoring** systems
+* **Creative collaboration** tools
+
+#### Workflow-Based
+* **Document processing** pipelines
+* **Content generation** workflows
+* **Data analysis** and reporting
+* **Compliance** and audit processes
+* **Multi-step approvals** and reviews
+* **Batch processing** operations
+
+<Aside type="note" title="Hybrid Approach">
+Many systems combine both architectures - using chatbots for user interaction and workflows for backend processing.
+</Aside>
+
+### Performance Characteristics
+
+#### Latency
+* **Chatbot:** p95 < 1.5–2.5s with streaming
+* **Workflow:** Minutes to hours depending on complexity
+
+#### Throughput
+* **Chatbot:** High concurrent users (thousands)
+* **Workflow:** High batch processing (millions of items)
+
+#### Resource Usage
+* **Chatbot:** CPU-intensive per request
+* **Workflow:** Memory-intensive for large datasets
+
+### Building Block Behavior
+
+| Building Block | Chatbot-Based | Workflow-Based |
+|----------------|---------------|----------------|
+| **Prompts** | Turn-scoped, streaming-friendly, tool schemas inline | Step-scoped, deterministic, strict schemas, low temperature |
+| **Agents** | Single orchestrator, pre/post processors, telemetry hooks | Orchestrator + workers, state transforms, step hooks |
+| **LLM Guards** | Lightweight, fast checks, interactive fallbacks | Hard gates, retry/human review, audited decisions |
+| **Evals** | Online sampling, A/B testing, real-time alerts | Step gates, regression packs, quality budgets |
+| **RAG** | On-demand retrieval, session filters, caching | Stage-specific retrieval, pre-ingestion, artifact storage |
+| **Memory** | Conversation + short-term TTL, user preferences | Run context + artifacts, durable TTL, cross-run caches |
+| **Operational** | p95 latency, cost per turn, chat observability | Exactly-once effects, queue health, run timelines |

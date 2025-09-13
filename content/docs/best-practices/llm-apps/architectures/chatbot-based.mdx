@@ -1,0 +1,176 @@
+---
+title: "Chatbot-Based"
+description: "Real-time conversational LLM systems for interactive user experiences"
+---
+
+import Aside from '@/components/ui/Aside';
+
+# Chatbot-Based Architecture
+
+<Aside type="tip" title="When to Use">
+Use chatbot-based architecture when users need to chat, ask questions, or co‑create in real time. This pattern is ideal for customer support, interactive assistants, and conversational interfaces.
+</Aside>
+
+## Overview
+
+Chatbot-based systems are designed for real-time, conversational interactions. They prioritize low latency, streaming responses, and immediate user feedback. This architecture is perfect for scenarios where users expect immediate responses and interactive tool calling.
+
+## Core Components
+
+### Channel/UI Layer
+* **Web/app chat interfaces** with real-time messaging
+* **Voice interfaces** for hands-free interaction
+* **Email bridge** for asynchronous communication
+* **Multi-modal support** (text, voice, images, files)
+
+### Gateway Layer
+* **Authentication** and session management
+* **Rate limiting** and abuse prevention
+* **Feature flags** for gradual rollouts
+* **Load balancing** and traffic routing
+
+### Orchestrator
+* **Turn loop management** for conversation flow
+* **Pre/post guards** for input/output validation
+* **Tool routing** and execution coordination
+* **Context management** across conversation turns
+
+### RAG Service
+* **Real-time retrieval** APIs with low latency
+* **Re-ranking** for relevance optimization
+* **Session-based filtering** for personalized results
+* **Caching strategies** for performance
+
+### Tool Registry
+* **Typed adapters** for external services
+* **Search tools** (web, internal knowledge)
+* **Calendar integration** for scheduling
+* **CRM tools** for customer data
+* **Custom business logic** tools
+
+### Memory Store
+* **Per-user conversation** memory
+* **Session persistence** across turns
+* **User profile** preferences
+* **Context summarization** for long conversations
+
+### Eval Service
+* **Online quality checks** in real-time
+* **Regression monitoring** for model changes
+* **A/B testing** for prompt optimization
+* **Feedback collection** and analysis
+
+### Telemetry
+* **Distributed tracing** across components
+* **Performance metrics** and SLAs
+* **Cost tracking** per conversation
+* **Audit logs** for compliance
+
+## Typical Turn Flow
+
+<Aside type="note" title="Turn Flow">
+Each user interaction follows this standardized flow to ensure consistent behavior and proper error handling.
+</Aside>
+
+1. **UI → Gateway** (session validation, authentication)
+2. **Pre‑guards** sanitize input (moderation, PII, injection checks)
+3. **Orchestrator** builds prompt and calls RAG if needed
+4. **Model generates** draft response
+5. **Post‑guards** validate (schema, safety, factuality)
+6. **Tool execution** if required (with result merging)
+7. **Final answer** delivered to UI with citations
+8. **Logging** of traces, evals, and feedback
+
+## Performance Targets
+
+* **Latency:** p95 < 1.5–2.5s with caching + streaming
+* **Safety:** Block reasons surfaced; redaction logs maintained
+* **Quality:** Online eval pass‑rate, helpfulness, citation coverage
+* **Cost:** Tokens/tool calls per turn; caps by plan/tenant
+
+<Aside type="tip" title="Performance Optimization">
+Use streaming responses, intelligent caching, and parallel tool execution to meet latency targets while maintaining quality.
+</Aside>
+
+## Building Block Behavior
+
+### Prompts
+* **Turn‑scoped templates** optimized for responsiveness
+* **Tool schemas** included in‑line for context
+* **Streaming‑friendly** formatting
+* **A/B testing** for optimization
+
+### Agents
+* **Single orchestrator** per conversation
+* **Pre/post processors** for input/output shaping
+* **Hooks** like `beforePrompt/afterToolCall` for telemetry
+* **Error recovery** and retry logic
+
+### LLM Guards
+* **Lightweight, fast** pre & post checks every turn
+* **Interactive fallbacks** (ask user to rephrase)
+* **Real-time feedback** on blocked content
+* **User-friendly** error messages
+
+### Evals
+* **Online sampling** for quality monitoring
+* **Helpfulness tracking** and coverage metrics
+* **A/B testing** for prompts and models
+* **Real-time alerts** for quality degradation
+
+### RAG
+* **On‑demand retrieval** per turn
+* **Session filters** for personalization
+* **Intelligent caching** for performance
+* **Smaller k** for faster responses
+
+### Memory
+* **Conversation + short‑term TTL**
+* **User/profile preferences** persistence
+* **Ephemeral corrections** and feedback
+* **Context summarization** for long conversations
+
+## Operational Concerns
+
+* **p95 latency** monitoring and alerting
+* **Cost per turn** tracking and optimization
+* **Chat observability** with conversation flows
+* **Safety redactions** visible to users
+* **Real-time debugging** capabilities
+
+<Aside type="caution" title="Monitoring">
+Implement comprehensive monitoring for latency, cost, and quality. Chat systems require real-time observability to maintain user satisfaction.
+</Aside>
+
+## Common Patterns
+
+### Multi-Turn Conversations
+* Context preservation across turns
+* Conversation summarization for long sessions
+* Topic switching and context switching
+* User intent clarification
+
+### Tool Integration
+* Parallel tool execution for speed
+* Tool result aggregation and ranking
+* Fallback strategies for tool failures
+* User confirmation for sensitive operations
+
+### Error Handling
+* Graceful degradation when services fail
+* User-friendly error messages
+* Retry mechanisms with exponential backoff
+* Escalation to human agents when needed
+
+### Personalization
+* User preference learning
+* Conversation history utilization
+* Adaptive response styles
+* Context-aware recommendations
+
+## Next Steps
+
+1. **Review the [Workflow-Based Architecture](/docs/best-practices/llm-apps/architectures/workflow-based)** to understand the alternative approach
+2. **Check the [Architecture Comparison](/docs/best-practices/llm-apps/architectures/comparison)** for detailed trade-offs
+3. **Start with the core setup** checklist for your implementation
+4. **Plan your monitoring strategy** before going live

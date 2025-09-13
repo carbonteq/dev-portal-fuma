@@ -1,0 +1,285 @@
+---
+title: "Overview"
+description: "Overview of LLM system building blocks and architecture patterns for engineering teams"
+---
+
+import Aside from '@/components/ui/Aside';
+import { FileText, Cpu, Sliders, Database, Wrench, Code, Brain, Activity, Shield, AlertTriangle, CheckCircle, Search, Users, Settings, Route, Timer, Archive } from 'lucide-react';
+
+# LLM Systems — Overview
+
+<Aside type="tip" title="Goal">
+Provide a comprehensive overview of LLM system components and architecture patterns. This guide covers the core building blocks and two primary architectures you can adapt: **Chatbot‑based** and **Workflow‑based**.
+</Aside>
+
+## Building Blocks
+
+Each block is intentionally small and composable. You can wire them together in many ways, but the contracts below should remain stable.
+
+<KnowledgeCard
+  title="Prompts"
+  purpose="Defines the instructions and configuration for guiding a Large Language Model (LLM) to perform a specific task. The prompt system consists of key subcomponents that work together to create effective model interactions."
+  subcomponents={[
+    { id: 'templates', name: 'Templates', description: 'Reusable prompt structures with placeholders', status: 'core', icon: FileText },
+    { id: 'model', name: 'Model (+ provider)', description: 'LLM selection and API configuration', status: 'core', icon: Cpu },
+    { id: 'parameters', name: 'Parameters', description: 'Temperature, top-p, max tokens, stop sequences, tools, etc.', status: 'core', icon: Sliders },
+    { id: 'context', name: 'Context injection', description: 'Retrieved docs, memory, tool results integration', status: 'core', icon: Database }
+  ]}
+  practices={[
+    { id: 'p1', text: 'Versioned prompt templates for consistent behavior' },
+    { id: 'p2', text: 'Parameter packs per mode (drafting vs. finalizing)' },
+    { id: 'p3', text: 'A/B slots for testing different approaches' }
+  ]}
+  gotchas={[
+    { id: 'g1', text: 'Silent prompt drift can cause unexpected behavior changes' },
+    { id: 'g2', text: 'Keep a prompt registry with IDs + changelog to track modifications' }
+  ]}
+/>
+
+<KnowledgeCard
+  title="Agents"
+  purpose="Model‑driven decision making across steps; picks tools, plans, or next actions. The agent architecture includes interconnected subcomponents that enable intelligent decision-making and tool interaction."
+  subcomponents={[
+    { id: 'tools', name: 'Tools', description: 'External service integration and standardized connections', status: 'core', icon: Wrench },
+    { id: 'processors', name: 'Processors', description: 'Input/output shaping, slot filling, state projection, answer shaping, schema mapping, citation merge', status: 'core', icon: Code },
+    { id: 'instructions', name: 'Instructions', description: 'Agent behavior guidelines and task specifications', status: 'core', icon: FileText },
+    { id: 'models', name: 'Models', description: 'LLM selection and configuration', status: 'core', icon: Brain },
+    { id: 'parameters', name: 'Parameters', description: 'Generation settings and tool configurations', status: 'core', icon: Sliders },
+    { id: 'context', name: 'Context', description: 'State management, memory, and conversation history', status: 'core', icon: Database },
+    { id: 'hooks', name: 'Pre/post hooks', description: 'Telemetry, feature flags, side‑effects', status: 'optional', icon: Activity },
+    { id: 'error-hooks', name: 'Error hooks', description: 'Error handling and recovery mechanisms', status: 'optional', icon: Shield }
+  ]}
+  practices={[
+    { id: 'p1', text: 'Explicit tool schemas for clear contracts' },
+    { id: 'p2', text: 'Retry + backoff for external service calls' },
+    { id: 'p3', text: 'Idempotency on external effects' },
+    { id: 'p4', text: 'Compose processors as pure functions' },
+    { id: 'p5', text: 'Keep hooks for observability/side‑effects' },
+    { id: 'p6', text: 'Deterministic ordering (pre → decide → post → hooks)' }
+  ]}
+  gotchas={[
+    { id: 'g1', text: 'Tool hallucinations require schema validation + post‑checks' },
+    { id: 'g2', text: 'Avoid business logic in hooks (keep them non‑blocking)' }
+  ]}
+/>
+
+<KnowledgeCard
+  title="Tools"
+  purpose="Extend agent capabilities with external functions and services. Tools enable agents to interact with external systems through standardized interfaces, providing function calling capabilities and API integration with proper validation."
+  subcomponents={[
+    { id: 'function-calling', name: 'Function calling', description: 'Direct function execution capabilities', status: 'core', icon: Code },
+    { id: 'api-integration', name: 'API integration', description: 'External service connectivity and standardized connections', status: 'core', icon: Database },
+    { id: 'schema-validation', name: 'Schema validation', description: 'Input/output validation and type checking', status: 'core', icon: Shield },
+    { id: 'retry-backoff', name: 'Retry + backoff', description: 'Resilient error handling and retry mechanisms', status: 'optional', icon: Activity }
+  ]}
+  practices={[
+    { id: 'p1', text: 'Explicit tool schemas for clear contracts' },
+    { id: 'p2', text: 'Retry + backoff for external service calls' },
+    { id: 'p3', text: 'Idempotency on external effects' },
+    { id: 'p4', text: 'Schema validation + post-checks' }
+  ]}
+  subcategories={[
+    {
+      id: 'local-tools',
+      name: 'Local Tools',
+      shortDescription: 'Same-process execution',
+      description: 'Tools that run within the same process or infrastructure as the agent, providing direct function execution capabilities with minimal latency and synchronous responses.',
+      items: [
+        { id: 'direct-calls', name: 'Direct function calls', href: '#local-tools', badge: 'default' },
+        { id: 'low-latency', name: 'Low latency execution', href: '#local-tools', badge: 'default' },
+        { id: 'synchronous', name: 'Synchronous responses', href: '#local-tools', badge: 'secondary' }
+      ]
+    },
+    {
+      id: 'mcp-tools',
+      name: 'MCP Tools',
+      shortDescription: 'Standardized protocol integration',
+      description: 'Tools that communicate through the Model Context Protocol for standardized tool integration across different platforms and environments.',
+      items: [
+        { id: 'standardized', name: 'Standardized protocol', href: '#mcp-tools', badge: 'default' },
+        { id: 'cross-platform', name: 'Cross-platform compatibility', href: '#mcp-tools', badge: 'default' },
+        { id: 'tool-discovery', name: 'Tool discovery', href: '#mcp-tools', badge: 'secondary' }
+      ]
+    }
+  ]}
+/>
+
+
+<KnowledgeCard
+  title="LLM Guards (Pre & Post)"
+  purpose="Guard inputs to and outputs from LLMs. The guard system operates through subcomponents that ensure safe LLM interactions with proper validation and safety measures."
+  subcomponents={[
+    { id: 'pre-guards', name: 'Pre-guards', description: 'Moderation, PII/secret scrubbing, prompt-injection checks, policy filters', status: 'core', icon: Shield },
+    { id: 'post-guards', name: 'Post-guards', description: 'Safety redaction, factuality gates, schema validation', status: 'core', icon: CheckCircle },
+    { id: 'policy-engine', name: 'Policy engine', description: 'Versioned rule management and decision logic', status: 'core', icon: Settings },
+    { id: 'logging-system', name: 'Logging system', description: 'Audit trail for allow/deny decisions', status: 'core', icon: Database }
+  ]}
+  practices={[
+    { id: 'p1', text: 'Treat guards as policies with versions' },
+    { id: 'p2', text: 'Log both allow/deny decisions for audit trails' },
+    { id: 'p3', text: 'Implement proper PII/secret scrubbing' },
+    { id: 'p4', text: 'Use factuality gates for output validation' }
+  ]}
+  gotchas={[
+    { id: 'g1', text: 'Guards can introduce latency if not optimized' },
+    { id: 'g2', text: 'Policy versioning is critical for consistent behavior' }
+  ]}
+/>
+
+<KnowledgeCard
+  title="Agent Networks"
+  purpose="Loop-based orchestration that routes work across multiple specialized agents using shared state and a router. Supports multi-model setups, deterministic or LLM routing, and explicit stop conditions."
+  subcomponents={[
+    { id: 'agents', name: 'Agents', description: 'Specialized units; each can use different models and tools', status: 'core', icon: Users },
+    { id: 'router', name: 'Router', description: 'Chooses next agent or stops; code-based, LLM, or hybrid', status: 'core', icon: Route },
+    { id: 'state', name: 'State', description: 'Shared history + typed key-value data accessible to agents and router', status: 'core', icon: Database },
+    { id: 'models', name: 'Model configuration', description: 'Network default model with per-agent overrides (multi-model)', status: 'core', icon: Brain },
+    { id: 'termination', name: 'Termination & limits', description: 'Done criteria and max iterations to prevent runaway loops', status: 'core', icon: Timer },
+    { id: 'default-state', name: 'Default State', description: 'Optional initial/persisted state to seed routing & tools', status: 'optional', icon: Archive }
+  ]}
+  practices={[
+    { id: 'p2', text: 'Start with a code (deterministic) router; add LLM/hybrid only where needed' },
+    { id: 'p3', text: 'Always set maxIter and a clear “done” predicate' },
+    { id: 'p4', text: 'Keep State minimal and strongly typed; persist via defaultState only when useful' },
+    { id: 'p5', text: 'Log router decisions and results to debug routing errors and ping-pong loops' },
+    { id: 'p6', text: 'Test routers with simulated State snapshots (golden cases + edge cases)' }
+  ]}
+  gotchas={[
+    { id: 'g1', text: 'LLM routing may miss finish states → enforce maxIter/termination checks' },
+    { id: 'g2', text: 'No defaultModel + agents without models → network init error' },
+    { id: 'g3', text: 'State bloat can cause misrouting; scope and redact aggressively' },
+  ]}
+/>
+
+<KnowledgeCard
+  title="Evals"
+  purpose="Judge non-deterministic outputs for quality, safety, and usefulness. The evaluation system includes subcomponents that assess LLM outputs across different dimensions with both automated and manual validation."
+  subcomponents={[
+    { id: 'rubric-graders', name: 'Rubric-based graders', description: 'LLM-powered evaluation using predefined criteria', status: 'core', icon: CheckCircle },
+    { id: 'code-checks', name: 'Code checks', description: 'Regex patterns, assertions, and automated validation', status: 'core', icon: Code },
+    { id: 'human-review', name: 'Human review', description: 'Manual assessment and quality control', status: 'optional', icon: Users },
+    { id: 'benchmark-systems', name: 'Benchmark systems', description: 'Offline testing and regression detection', status: 'core', icon: Database },
+    { id: 'shadow-guardrails', name: 'Shadow/guardrails', description: 'Online monitoring and canary deployments', status: 'optional', icon: Activity }
+  ]}
+  practices={[
+    { id: 'p1', text: 'Use both offline and online evaluation strategies' },
+    { id: 'p2', text: 'Implement regression detection for quality control' },
+    { id: 'p3', text: 'Combine automated and human evaluation methods' },
+    { id: 'p4', text: 'Track scores and tags for fine-tuning data' }
+  ]}
+  gotchas={[
+    { id: 'g1', text: 'Evaluation criteria must be well-defined and consistent' },
+    { id: 'g2', text: 'Human review can be expensive and slow' }
+  ]}
+/>
+
+<KnowledgeCard
+  title="RAG (Retrieval-Augmented Generation)"
+  purpose="Attach relevant knowledge to a prompt. The RAG system includes interconnected subcomponents that retrieve and integrate relevant knowledge through semantic search and intelligent processing."
+  subcomponents={[
+    { id: 'ingestion-pipelines', name: 'Ingestion pipelines', description: 'Document chunking, parsing, and preprocessing', status: 'core', icon: Database },
+    { id: 'embeddings', name: 'Embeddings', description: 'Vector representations for semantic search', status: 'core', icon: Search },
+    { id: 'vector-stores', name: 'Vector/graph stores', description: 'Knowledge storage and retrieval systems', status: 'core', icon: Database },
+    { id: 're-rankers', name: 'Re-rankers', description: 'Result refinement and relevance scoring', status: 'core', icon: Activity },
+    { id: 'query-processors', name: 'Query processors', description: 'Query understanding and optimization', status: 'core', icon: Settings }
+  ]}
+  practices={[
+    { id: 'p1', text: 'Document processing recipes for consistent chunking' },
+    { id: 'p2', text: 'Use chunk/section IDs for proper referencing' },
+    { id: 'p3', text: 'Include provenance tags for source tracking' },
+    { id: 'p4', text: 'Set freshness windows for content validity' }
+  ]}
+  gotchas={[
+    { id: 'g1', text: 'Over-chunking can reduce context quality' },
+    { id: 'g2', text: 'Missing metadata breaks provenance tracking' },
+    { id: 'g3', text: 'No evals on ingestion quality leads to poor results' }
+  ]}
+  subcategories={[
+    {
+      id: 'memory-rag',
+      name: 'Memory RAG',
+      shortDescription: 'User context integration',
+      description: 'Integrate persistent user context with knowledge retrieval to provide personalized and contextual responses based on conversation history and user-specific information.',
+      items: [
+        { id: 'user-memory', name: 'User-specific memory', href: '#memory-rag', badge: 'default' },
+        { id: 'personalized', name: 'Personalized context', href: '#memory-rag', badge: 'default' },
+        { id: 'conversation', name: 'Conversation history', href: '#memory-rag', badge: 'secondary' }
+      ]
+    },
+    {
+      id: 'agentic-rag',
+      name: 'Agentic RAG',
+      shortDescription: 'AI-driven retrieval strategies',
+      description: 'Use AI agents to dynamically determine retrieval strategies, enabling intelligent query planning and adaptive approaches based on context and requirements.',
+      items: [
+        { id: 'query-planning', name: 'Intelligent query planning', href: '#agentic-rag', badge: 'default' },
+        { id: 'adaptive', name: 'Adaptive retrieval strategies', href: '#agentic-rag', badge: 'default' },
+        { id: 'multi-step', name: 'Multi-step reasoning', href: '#agentic-rag', badge: 'secondary' }
+      ]
+    },
+    {
+      id: 'graph-rag',
+      name: 'Graph RAG',
+      shortDescription: 'Knowledge graph relationships',
+      description: 'Leverage knowledge graphs for structured relationship-based retrieval, enabling semantic connections and entity relationships for more contextual understanding.',
+      items: [
+        { id: 'entity-relationships', name: 'Entity relationships', href: '#graph-rag', badge: 'default' },
+        { id: 'semantic-connections', name: 'Semantic connections', href: '#graph-rag', badge: 'default' },
+        { id: 'structured-traversal', name: 'Structured knowledge traversal', href: '#graph-rag', badge: 'secondary' }
+      ]
+    }
+  ]}
+/>
+
+
+<KnowledgeCard
+  title="Memory"
+  purpose="Persist context that improves future turns or runs. The memory system includes subcomponents that manage different types of persistent context for both short-term and long-term storage."
+  subcomponents={[
+    { id: 'conversation-memory', name: 'Conversation memory', description: 'Short-term context for current session', status: 'core', icon: Database },
+    { id: 'user-profile-memory', name: 'User/profile memory', description: 'Long-term personalized context', status: 'core', icon: Users },
+    { id: 'global-org-memory', name: 'Global/org memory', description: 'Shared organizational knowledge', status: 'core', icon: Database },
+    { id: 'memory-stores', name: 'Memory stores', description: 'Database, cache, and persistence layers', status: 'core', icon: Database },
+    { id: 'memory-management', name: 'Memory management', description: 'TTL, cleanup, and lifecycle management', status: 'optional', icon: Settings }
+  ]}
+  practices={[
+    { id: 'p1', text: 'Separate memory from knowledge corpora' },
+    { id: 'p2', text: 'Set appropriate TTLs for different memory types' },
+    { id: 'p3', text: 'Support subject-access/delete for compliance' },
+    { id: 'p4', text: 'Use proper scoping for memory isolation' }
+  ]}
+  gotchas={[
+    { id: 'g1', text: 'Memory can grow indefinitely without proper TTL management' },
+    { id: 'g2', text: 'Compliance requirements need proper data deletion support' }
+  ]}
+/>
+
+## Operational Concerns
+
+**Purpose:** Manage the production lifecycle, monitoring, and maintenance of LLM systems.
+
+Operational concerns include subcomponents that ensure reliable production operation of LLM systems. Prompt management handles versions and rollouts, observability provides monitoring and logging, dataset management maintains data quality, while CI/CD, model selection, and deployment pipelines handle testing and releases.
+
+* **Prompt management:** IDs, versions, diffs, rollout plans
+* **Observability:** Traces, tool spans, token/cost, eval events, safety decisions
+* **Dataset management:** Gold data, negative examples, drift monitoring
+* **Synthetic data:** Controlled generation with templates + filters; never replace real labels
+* **CI/CD:** Prompt/tests/evals in the pipeline; gated releases; canary rolls
+* **Model selection:** Multi‑provider adapters; latency/cost/quality routing
+* **Monitoring systems:** Performance tracking and alerting
+* **Deployment pipelines:** Automated testing and release management
+
+<Aside type="tip" title="Synthetic Data">
+Use synthetic data for controlled generation with templates and filters, but never replace real labels. It's a supplement, not a replacement.
+</Aside>
+
+
+## Next Steps
+
+1. **Set up your building blocks** following the patterns and best practices outlined above
+2. **Implement the core components** (Prompts, Agents, RAG, Memory) based on your requirements
+3. **Follow the key practices** and avoid the common gotchas for each component
+
+<Aside type="tip" title="Flexibility">
+Keep interfaces stable and treat models/tools as replaceable. This allows you to adapt and upgrade components without major system changes.
+</Aside>

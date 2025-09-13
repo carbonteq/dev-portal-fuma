@@ -1,0 +1,8 @@
+{
+  "title": "LLM Apps",
+  "description": "Best practices and guidelines for building LLM-powered applications and systems",
+  "pages": [
+    "overview",
+    "architectures"
+  ]
+}

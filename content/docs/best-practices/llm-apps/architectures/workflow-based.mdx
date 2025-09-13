@@ -1,0 +1,231 @@
+---
+title: "Workflow-Based"
+description: "Orchestrated multi-step LLM systems for complex business processes"
+---
+
+import Aside from '@/components/ui/Aside';
+
+# Workflow-Based Architecture
+
+<Aside type="tip" title="When to Use">
+Use workflow-based architecture when you need multi‑step business processes, deterministic gates, and async work. Examples include document intake → analyze → summarize → file tickets → notify.
+</Aside>
+
+## Overview
+
+Workflow-based systems are designed for complex, multi-step business processes that require orchestration, audit trails, and human-in-the-loop capabilities. They prioritize reliability, traceability, and deterministic execution over real-time responsiveness.
+
+## Core Concepts
+
+### Orchestrator Agent
+* **Owns the plan/state** for the entire workflow
+* **Pushes steps to workers** based on workflow definition
+* **Manages state transitions** and error recovery
+* **Coordinates human-in-the-loop** interventions
+
+### Workers/Skills
+* **Specialized agents** for specific tasks
+* **RAG agents** for knowledge retrieval
+* **Finetuned writers** for content generation
+* **Analysis agents** for data processing
+* **Notification agents** for communication
+
+### State Manager
+* **Slot/state machine** with retries
+* **Idempotent steps** for reliability
+* **Compensation logic** for rollbacks
+* **State persistence** across failures
+
+### Memory System
+* **Shared store** for run context
+* **Artifact storage** for intermediate results
+* **Cross-step data** sharing
+* **Audit trail** maintenance
+
+### Eval Gates
+* **Step-level quality** checks
+* **Human review** queues when below threshold
+* **Automated retry** logic
+* **Escalation policies** for failures
+
+## Example Workflow: Document Q&A Pack
+
+<Aside type="note" title="Real Example">
+This example shows how a complex document processing workflow can be orchestrated using the workflow-based architecture.
+</Aside>
+
+### Step 1: Ingest
+* Parse document format (PDF, Word, etc.)
+* Extract text and metadata
+* Chunk content for processing
+* Store in RAG system with provenance
+
+### Step 2: Build Brief
+* Use finetuned model for summarization
+* Apply post-guard schema validation
+* Generate structured brief
+* Store as workflow artifact
+
+### Step 3: Answer Set Generation
+* RAG agent retrieves relevant information
+* Generate Q&A pairs based on content
+* Cite sources with proper attribution
+* Validate answer quality
+
+### Step 4: Package
+* Combine brief and Q&A into final format
+* Generate PDF/HTML artifacts
+* Apply branding and formatting
+* Create distribution packages
+
+### Step 5: Quality Gate
+* Apply rubric: coverage, accuracy, tone
+* If quality below threshold → human review task
+* Automated retry with different parameters
+* Escalation to senior reviewers
+
+### Step 6: Notify
+* Send webhook/email notifications
+* Update external systems
+* Persist run record and metrics
+* Trigger downstream processes
+
+## Non-Functional Requirements
+
+### Reliability
+* **Exactly‑once effects** via idempotency keys
+* **Durable queue** for step persistence
+* **Compensation logic** for rollbacks
+* **Circuit breakers** for external services
+
+### Observability
+* **Run timeline** visualization
+* **Per‑step spans** for debugging
+* **Eval dashboards** for quality monitoring
+* **Cost tracking** per workflow run
+
+### Compliance
+* **Artifact retention** windows
+* **PII minimization** strategies
+* **Audit trails** for all actions
+* **Data lineage** tracking
+
+<Aside type="caution" title="Compliance">
+Workflow systems often handle sensitive data. Ensure proper audit trails, data retention policies, and PII handling from the start.
+</Aside>
+
+## Building Block Behavior
+
+### Prompts
+* **Step‑scoped, deterministic** templates
+* **Strict schema outputs** for validation
+* **Low temperature** for consistency
+* **Reproducible** across runs
+
+### Agents
+* **Orchestrator + worker agents** pattern
+* **Plan across steps** with state management
+* **Strong pre/post processors** for state transforms
+* **Hooks** like `beforeStep/afterStep` and `onRetry`
+
+### LLM Guards
+* **Hard gates** at step boundaries
+* **Retry/human review** on failure
+* **Decisions audited** with reasons
+* **Quality thresholds** enforced
+
+### Evals
+* **Gate each step** with quality checks
+* **Regression packs** for testing
+* **Quality budgets** for monitoring
+* **Automatic stop/fix** loops
+
+### RAG
+* **Stage‑specific retrieval** for each step
+* **Ingestion ahead of time** for performance
+* **Evidence committed** as artifacts
+* **Re‑ranking tuned** for accuracy
+
+### Memory
+* **Run context + artifact store**
+* **Durable TTL** for persistence
+* **Cross‑run caches** and dedup keys
+* **State sharing** between steps
+
+## Operational Concerns
+
+* **Exactly‑once effects** via idempotency
+* **Queue health** monitoring
+* **Idempotency audits** for data integrity
+* **Run timelines** and step SLAs
+* **Cost optimization** across workflow runs
+
+<Aside type="tip" title="Reliability">
+Focus on exactly-once execution and comprehensive error handling. Workflow systems must be reliable and auditable for business-critical processes.
+</Aside>
+
+## Common Patterns
+
+### Human-in-the-Loop
+* Quality gates with human review
+* Escalation policies for complex cases
+* Approval workflows for sensitive operations
+* Feedback loops for continuous improvement
+
+### Error Handling
+* Retry with exponential backoff
+* Compensation logic for rollbacks
+* Dead letter queues for failed steps
+* Manual intervention capabilities
+
+### State Management
+* Immutable state transitions
+* State snapshots for debugging
+* Rollback capabilities
+* State validation at each step
+
+### Parallel Processing
+* Independent step execution
+* Resource pooling and optimization
+* Dependency management
+* Result aggregation
+
+### Monitoring & Debugging
+* Step-by-step execution traces
+* Performance metrics per step
+* Error analysis and reporting
+* Capacity planning insights
+
+## Workflow Design Best Practices
+
+### Step Granularity
+* Keep steps focused and testable
+* Balance between granularity and overhead
+* Design for independent execution
+* Plan for error isolation
+
+### State Design
+* Immutable state transitions
+* Clear data contracts between steps
+* Version state schemas
+* Plan for state migration
+
+### Error Recovery
+* Design for partial failures
+* Implement compensation logic
+* Plan for manual intervention
+* Test failure scenarios
+
+### Performance
+* Optimize for throughput over latency
+* Use parallel execution where possible
+* Implement intelligent caching
+* Monitor resource utilization
+
+## Next Steps
+
+1. **Review the [Chatbot-Based Architecture](/docs/best-practices/llm-apps/architectures/chatbot-based)** to understand the alternative approach
+2. **Check the [Architecture Comparison](/docs/best-practices/llm-apps/architectures/comparison)** for detailed trade-offs
+3. **Start with workflow definition** and step specifications
+4. **Plan your monitoring and observability** strategy early
+5. **Design for failure** and human intervention from the start

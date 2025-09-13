@@ -1,0 +1,9 @@
+{
+  "title": "Functional Arch",
+  "description": "Detailed guides for LLM system architectures and patterns",
+  "pages": [
+    "chatbot-based",
+    "workflow-based",
+    "comparison"
+  ]
+}
