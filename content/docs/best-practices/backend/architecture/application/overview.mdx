@@ -1,0 +1,900 @@
+---
+title: Overview
+description: "The application layer orchestrates domain entities and infrastructure repositories through workflows that handle validation, business logic coordination, and error boundaries."
+---
+
+import { ScrollyCoding } from "@/components/ui/ScrollyCoding";
+
+# Application Layer
+
+The **application layer** sits between your domain entities and infrastructure repositories, orchestrating business operations through **workflows**. Unlike use cases, workflows emphasize the flow of data and operations through validated pipelines using Effect's functional composition.
+
+---
+
+# Complete Host Workflow Example
+
+The following comprehensive example demonstrates all application layer patterns in action - from DTO creation through full workflow implementation:
+
+<ScrollyCoding>
+
+## !!steps Schema-Based DTOs Setup and Foundation
+We'll use schema-based DTOs instead of traditional class-based DTOs for better type safety and validation.
+
+```typescript !
+// ❌ Traditional class-based DTO approach
+// class CreateHostDTO {
+//   constructor(
+//     public userId: string,
+//     public dob?: Date,
+//     public phoneNumber?: string
+//   ) {}
+// }
+
+// ✅ Schema-based DTO approach we'll implement
+import { HostSchema } from "@domain/entities/user/host.entity";
+import { StringToUUID } from "@domain/utils/refined.types";
+import { Schema as S } from "effect";
+
+// !mark(1:12) #22c55e
+/**
+ * Schema-based DTOs provide:
+ * 1. Runtime validation with compile-time types
+ * 2. Automatic encoding/decoding transformations
+ * 3. Composable schema building blocks
+ * 4. Better error handling and validation messages
+ * 5. Seamless integration with Effect workflows
+ * 
+ * DTO schemas for host workflow operations
+ * Following schema-derived pattern for consistency and validation
+ */
+```
+
+## !!steps Create Host DTO - Required and Optional Fields
+Build the creation DTO with required `userId` and optional profile fields. Notice we're composing with existing HostSchema.fields rather than redefining validation rules.
+
+```typescript !
+// !collapse(1:7) collapsed
+// Previous step: Basic imports and comments
+import { HostSchema } from "@domain/entities/user/host.entity";
+import { StringToUUID } from "@domain/utils/refined.types";
+import { Schema as S } from "effect";
+
+/**
+ * DTO schemas for host workflow operations
+ */
+
+// !mark(1:14) #22c55e
+/**
+ * Create host DTO - derived from entity schema excluding base fields
+ * Required: userId (to link to user)
+ * Optional: profile fields
+ */
+export const CreateHostDTOSchema = S.Struct({
+    userId: StringToUUID, // !callout[/StringToUUID/] #22c55e Validates string → UUID
+    dob: S.optional(HostSchema.fields.dob),
+    phoneNumber: S.optional(HostSchema.fields.phoneNumber),
+    profileImage: S.optional(HostSchema.fields.profileImage),
+    // Address and social links will be created with defaults if not provided
+    address: S.optional(HostSchema.fields.address),
+    socialLinks: S.optional(HostSchema.fields.socialLinks)
+});
+export type CreateHostDTO = S.Schema.Type<typeof CreateHostDTOSchema>;
+export type CreateHostDTOEncoded = S.Schema.Encoded<typeof CreateHostDTOSchema>;
+```
+
+## !!steps Update Profile DTO - Partial with Required ID
+Create a partial update schema that picks specific fields and requires an ID. See [Schema pick](https://effect.website/docs/schema/basic-usage/#pick) and [extend function](https://effect.website/docs/schema/advanced-usage/#the-extend-function) in Effect Schema API.
+
+```typescript !
+// !collapse(1:14) collapsed
+// Previous steps: imports and CreateHostDTOSchema
+import { HostSchema } from "@domain/entities/user/host.entity";
+import { StringToUUID } from "@domain/utils/refined.types";
+import { Schema as S } from "effect";
+
+export const CreateHostDTOSchema = S.Struct({
+    userId: StringToUUID,
+    dob: S.optional(HostSchema.fields.dob),
+    phoneNumber: S.optional(HostSchema.fields.phoneNumber),
+    profileImage: S.optional(HostSchema.fields.profileImage),
+    address: S.optional(HostSchema.fields.address),
+    socialLinks: S.optional(HostSchema.fields.socialLinks)
+});
+export type CreateHostDTO = S.Schema.Type<typeof CreateHostDTOSchema>;
+export type CreateHostDTOEncoded = S.Schema.Encoded<typeof CreateHostDTOSchema>;
+
+// !mark(1:8) #22c55e
+/**
+ * Update host profile DTO - partial with required id
+ * Uses the existing HostSchema fields for consistency
+ */
+export const UpdateHostProfileDTOSchema = HostSchema.pick("dob", "phoneNumber", "profileImage")
+    .pipe(S.partialWith({exact: true}))
+    .pipe(S.extend(S.Struct({id: StringToUUID})));
+export type UpdateHostProfileDTO = S.Schema.Type<typeof UpdateHostProfileDTOSchema>;
+export type UpdateHostProfileDTOEncoded = S.Schema.Encoded<typeof UpdateHostProfileDTOSchema>;
+```
+
+## !!steps Specialized Update DTOs - Address and Social Links
+Add focused update schemas for address and social links.
+
+```typescript !
+// !collapse(1:22) collapsed
+// Previous steps: CreateHostDTOSchema and UpdateHostProfileDTOSchema
+import { HostSchema } from "@domain/entities/user/host.entity";
+import { StringToUUID } from "@domain/utils/refined.types";
+import { Schema as S } from "effect";
+
+export const CreateHostDTOSchema = S.Struct({
+    userId: StringToUUID,
+    dob: S.optional(HostSchema.fields.dob),
+    phoneNumber: S.optional(HostSchema.fields.phoneNumber),
+    profileImage: S.optional(HostSchema.fields.profileImage),
+    address: S.optional(HostSchema.fields.address),
+    socialLinks: S.optional(HostSchema.fields.socialLinks)
+});
+export type CreateHostDTO = S.Schema.Type<typeof CreateHostDTOSchema>;
+export type CreateHostDTOEncoded = S.Schema.Encoded<typeof CreateHostDTOSchema>;
+
+export const UpdateHostProfileDTOSchema = HostSchema.pick("dob", "phoneNumber", "profileImage")
+    .pipe(S.partialWith({exact: true}))
+    .pipe(S.extend(S.Struct({id: StringToUUID})));
+export type UpdateHostProfileDTO = S.Schema.Type<typeof UpdateHostProfileDTOSchema>;
+export type UpdateHostProfileDTOEncoded = S.Schema.Encoded<typeof UpdateHostProfileDTOSchema>;
+
+// !mark(1:17) #22c55e
+/**
+ * Update host address DTO
+ */
+export const UpdateHostAddressDTOSchema = S.Struct({
+    id: StringToUUID,
+    address: HostSchema.fields.address
+});
+export type UpdateHostAddressDTO = S.Schema.Type<typeof UpdateHostAddressDTOSchema>;
+export type UpdateHostAddressDTOEncoded = S.Schema.Encoded<typeof UpdateHostAddressDTOSchema>;
+
+/**
+ * Update host social links DTO
+ */
+export const UpdateHostSocialLinksDTOSchema = S.Struct({
+    id: StringToUUID,
+    socialLinks: HostSchema.fields.socialLinks
+});
+export type UpdateHostSocialLinksDTO = S.Schema.Type<typeof UpdateHostSocialLinksDTOSchema>;
+export type UpdateHostSocialLinksDTOEncoded = S.Schema.Encoded<typeof UpdateHostSocialLinksDTOSchema>;
+```
+
+## !!steps Simple Operation DTOs - Remove and Fetch
+Add minimal DTOs for basic operations.
+
+```typescript !
+// !collapse(1:38) collapsed
+// Previous steps: All update DTOs
+import { HostSchema } from "@domain/entities/user/host.entity";
+import { StringToUUID } from "@domain/utils/refined.types";
+import { Schema as S } from "effect";
+
+export const CreateHostDTOSchema = S.Struct({
+    userId: StringToUUID,
+    dob: S.optional(HostSchema.fields.dob),
+    phoneNumber: S.optional(HostSchema.fields.phoneNumber),
+    profileImage: S.optional(HostSchema.fields.profileImage),
+    address: S.optional(HostSchema.fields.address),
+    socialLinks: S.optional(HostSchema.fields.socialLinks)
+});
+export type CreateHostDTO = S.Schema.Type<typeof CreateHostDTOSchema>;
+export type CreateHostDTOEncoded = S.Schema.Encoded<typeof CreateHostDTOSchema>;
+
+export const UpdateHostProfileDTOSchema = HostSchema.pick("dob", "phoneNumber", "profileImage")
+    .pipe(S.partialWith({exact: true}))
+    .pipe(S.extend(S.Struct({id: StringToUUID})));
+export type UpdateHostProfileDTO = S.Schema.Type<typeof UpdateHostProfileDTOSchema>;
+export type UpdateHostProfileDTOEncoded = S.Schema.Encoded<typeof UpdateHostProfileDTOSchema>;
+
+export const UpdateHostAddressDTOSchema = S.Struct({
+    id: StringToUUID,
+    address: HostSchema.fields.address
+});
+export type UpdateHostAddressDTO = S.Schema.Type<typeof UpdateHostAddressDTOSchema>;
+export type UpdateHostAddressDTOEncoded = S.Schema.Encoded<typeof UpdateHostAddressDTOSchema>;
+
+export const UpdateHostSocialLinksDTOSchema = S.Struct({
+    id: StringToUUID,
+    socialLinks: HostSchema.fields.socialLinks
+});
+export type UpdateHostSocialLinksDTO = S.Schema.Type<typeof UpdateHostSocialLinksDTOSchema>;
+export type UpdateHostSocialLinksDTOEncoded = S.Schema.Encoded<typeof UpdateHostSocialLinksDTOSchema>;
+
+// !mark(1:15) #22c55e
+/**
+ * Remove host DTO - just id required
+ */
+export const RemoveHostDTOSchema = S.Struct({
+    id: StringToUUID
+});
+export type RemoveHostDTO = S.Schema.Type<typeof RemoveHostDTOSchema>;
+export type RemoveHostDTOEncoded = S.Schema.Encoded<typeof RemoveHostDTOSchema>;
+
+/**
+ * Get host by user ID DTO
+ */
+export const GetHostByUserIdDTOSchema = S.Struct({
+    userId: StringToUUID
+});
+export type GetHostByUserIdDTO = S.Schema.Type<typeof GetHostByUserIdDTOSchema>;
+export type GetHostByUserIdDTOEncoded = S.Schema.Encoded<typeof GetHostByUserIdDTOSchema>;
+```
+
+## !!steps Query DTO - Search and Pagination
+Complete the DTO collection with a flexible query schema.
+
+```typescript !
+// !collapse(1:52) collapsed
+// Previous steps: All operation DTOs
+import { HostSchema } from "@domain/entities/user/host.entity";
+import { StringToUUID } from "@domain/utils/refined.types";
+import { Schema as S } from "effect";
+
+export const CreateHostDTOSchema = S.Struct({
+    userId: StringToUUID,
+    dob: S.optional(HostSchema.fields.dob),
+    phoneNumber: S.optional(HostSchema.fields.phoneNumber),
+    profileImage: S.optional(HostSchema.fields.profileImage),
+    address: S.optional(HostSchema.fields.address),
+    socialLinks: S.optional(HostSchema.fields.socialLinks)
+});
+export type CreateHostDTO = S.Schema.Type<typeof CreateHostDTOSchema>;
+export type CreateHostDTOEncoded = S.Schema.Encoded<typeof CreateHostDTOSchema>;
+
+export const UpdateHostProfileDTOSchema = HostSchema.pick("dob", "phoneNumber", "profileImage")
+    .pipe(S.partialWith({exact: true}))
+    .pipe(S.extend(S.Struct({id: StringToUUID})));
+export type UpdateHostProfileDTO = S.Schema.Type<typeof UpdateHostProfileDTOSchema>;
+export type UpdateHostProfileDTOEncoded = S.Schema.Encoded<typeof UpdateHostProfileDTOSchema>;
+
+export const UpdateHostAddressDTOSchema = S.Struct({
+    id: StringToUUID,
+    address: HostSchema.fields.address
+});
+export type UpdateHostAddressDTO = S.Schema.Type<typeof UpdateHostAddressDTOSchema>;
+export type UpdateHostAddressDTOEncoded = S.Schema.Encoded<typeof UpdateHostAddressDTOSchema>;
+
+export const UpdateHostSocialLinksDTOSchema = S.Struct({
+    id: StringToUUID,
+    socialLinks: HostSchema.fields.socialLinks
+});
+export type UpdateHostSocialLinksDTO = S.Schema.Type<typeof UpdateHostSocialLinksDTOSchema>;
+export type UpdateHostSocialLinksDTOEncoded = S.Schema.Encoded<typeof UpdateHostSocialLinksDTOSchema>;
+
+export const RemoveHostDTOSchema = S.Struct({
+    id: StringToUUID
+});
+export type RemoveHostDTO = S.Schema.Type<typeof RemoveHostDTOSchema>;
+export type RemoveHostDTOEncoded = S.Schema.Encoded<typeof RemoveHostDTOSchema>;
+
+export const GetHostByUserIdDTOSchema = S.Struct({
+    userId: StringToUUID
+});
+export type GetHostByUserIdDTO = S.Schema.Type<typeof GetHostByUserIdDTOSchema>;
+export type GetHostByUserIdDTOEncoded = S.Schema.Encoded<typeof GetHostByUserIdDTOSchema>;
+
+// !mark(1:14) #22c55e
+/**
+ * Query hosts DTO with search and pagination
+ */
+export const QueryHostsDTOSchema = S.Struct({
+    search: S.optional(S.String), // !callout[/search.*S\.String/] #22c55e Search by display name or user ID
+    hasCompleteProfile: S.optional(S.Boolean), // Filter by profile completion
+    minAge: S.optional(S.Number), // Filter by minimum age
+    maxAge: S.optional(S.Number), // Filter by maximum age
+    city: S.optional(S.String), // Filter by address city
+    country: S.optional(S.String), // Filter by address country
+    pageNum: S.optional(S.Number), // !callout[/pageNum.*pageSize/] #22c55e Pagination controls
+    pageSize: S.optional(S.Number)
+});
+export type QueryHostsDTO = S.Schema.Type<typeof QueryHostsDTOSchema>;
+export type QueryHostsDTOEncoded = S.Schema.Encoded<typeof QueryHostsDTOSchema>;
+```
+
+</ScrollyCoding>
+
+---
+
+<ScrollyCoding>
+
+## !!steps Workflow Foundation - DI and Imports
+Start with the essential workflow setup and dependency injection.
+
+```typescript !
+import "reflect-metadata";
+
+import { Host } from "@domain/entities/user/host.entity";
+import { HostNotFoundError, HostValidationError } from "@domain/entities/user/host.error";
+import { PaginationOptions } from "@domain/utils/pagination";
+import { DateTime, UUID } from "@domain/utils/refined.types";
+import { TOKENS } from "@infra/di/container";
+import { Effect as E, Option as O, pipe, Schema as S } from "effect";
+import { inject, injectable } from "tsyringe";
+
+// !mark(1:16) #22c55e
+/**
+ * Host workflow for handling host-related business operations
+ * Manages host profile creation, updates, and queries
+ * Coordinates between host entity and value objects (Address, SocialLinks)
+ */
+@injectable() // !callout[/@injectable/] #22c55e Enables DI container registration
+export class HostWorkflow {
+    constructor(
+        @inject(TOKENS.HOST_REPOSITORY) // !callout[/@inject\(TOKENS\.HOST_REPOSITORY\)/] #22c55e Repository dependency
+        private readonly hostRepository: HostRepository
+    ) {}
+}
+```
+
+## !!steps Private Helper - Initialize Host Data
+Add the data initialization helper that handles defaults and timestamps.
+
+```typescript !
+// !collapse(1:9) collapsed
+// Previous step: imports and workflow class setup
+import "reflect-metadata";
+import { Host } from "@domain/entities/user/host.entity";
+import { HostNotFoundError, HostValidationError } from "@domain/entities/user/host.error";
+import { PaginationOptions } from "@domain/utils/pagination";
+import { DateTime, UUID } from "@domain/utils/refined.types";
+import { TOKENS } from "@infra/di/container";
+import { Effect as E, Option as O, pipe, Schema as S } from "effect";
+import { inject, injectable } from "tsyringe";
+
+@injectable()
+export class HostWorkflow {
+    constructor(
+        @inject(TOKENS.HOST_REPOSITORY) 
+        private readonly hostRepository: HostRepository
+    ) {}
+
+// !mark(1:35) #22c55e
+    /**
+     * Initialize host data with default values and timestamps
+     */
+    private initializeHostData(input: Partial<SerializedHost>): SerializedHost {
+        const now = DateTime.now();
+
+        // Create default address if not provided
+        const defaultAddress: SerializedAddress = {
+            address: "",
+            city: "",
+            state: "",
+            country: "",
+            zipCode: ""
+        };
+
+        // Create default social links if not provided
+        const defaultSocialLinks: SerializedSocialLinks = {
+            websiteLink: "",
+            twitterLink: "",
+            instagramLink: "",
+            facebookLink: "",
+            venmoLink: "",
+            googleReviewLink: ""
+        };
+
+        const baseData = {
+            ...input,
+            address: input.address ?? defaultAddress,
+            socialLinks: input.socialLinks ?? defaultSocialLinks,
+            createdAt: input.createdAt ?? now,
+            updatedAt: now
+        } as SerializedHost;
+
+        return baseData;
+    }
+}
+```
+
+## !!steps Create Host Workflow - Validation Pipeline
+Build the create operation with DTO validation and entity creation.
+
+```typescript !
+// !collapse(1:8) collapsed
+// Previous step: imports
+import "reflect-metadata";
+import { Host } from "@domain/entities/user/host.entity";
+import { HostNotFoundError, HostValidationError } from "@domain/entities/user/host.error";
+import { PaginationOptions } from "@domain/utils/pagination";
+import { DateTime, UUID } from "@domain/utils/refined.types";
+import { TOKENS } from "@infra/di/container";
+import { Effect as E, Option as O, pipe, Schema as S } from "effect";
+import { inject, injectable } from "tsyringe";
+
+@injectable()
+export class HostWorkflow {
+    constructor(
+        @inject(TOKENS.HOST_REPOSITORY) 
+        private readonly hostRepository: HostRepository
+    ) {}
+
+    // !collapse(1:19) collapsed
+    // initializeHostData helper method
+    private initializeHostData(input: Partial<SerializedHost>): SerializedHost {
+        const now = DateTime.now();
+        const defaultAddress: SerializedAddress = {
+            address: "", city: "", state: "", country: "", zipCode: ""
+        };
+        const defaultSocialLinks: SerializedSocialLinks = {
+            websiteLink: "", twitterLink: "", instagramLink: "",
+            facebookLink: "", venmoLink: "", googleReviewLink: ""
+        };
+        const baseData = {
+            ...input,
+            address: input.address ?? defaultAddress,
+            socialLinks: input.socialLinks ?? defaultSocialLinks,
+            createdAt: input.createdAt ?? now,
+            updatedAt: now
+        } as SerializedHost;
+        return baseData;
+    }
+
+// !mark(1:20) #22c55e
+    /**
+     * Create a new host profile
+     */
+    createHost(input: CreateHostDTOEncoded): E.Effect<Host, HostError | ParseResult.ParseError> {
+        return pipe(
+            S.decodeUnknown(CreateHostDTOSchema)(input), 
+            E.flatMap((dto: CreateHostDTO) => {
+                const hostData = this.initializeHostData({
+                    userId: dto.userId,
+                    dob: dto.dob,
+                    phoneNumber: dto.phoneNumber,
+                    profileImage: dto.profileImage,
+                    address: dto.address,
+                    socialLinks: dto.socialLinks
+                });
+                return Host.create(hostData);
+            }),
+            E.flatMap((host) => this.hostRepository.add(host))
+        );
+    }
+}
+```
+
+## !!steps Update Profile Workflow - Fetch and Merge Pattern
+Add the profile update workflow that fetches existing data and merges changes.
+
+```typescript !
+// !collapse(1:9) collapsed
+// imports
+import "reflect-metadata";
+import { Host } from "@domain/entities/user/host.entity";
+import { HostNotFoundError, HostValidationError } from "@domain/entities/user/host.error";
+import { PaginationOptions } from "@domain/utils/pagination";
+import { DateTime, UUID } from "@domain/utils/refined.types";
+import { TOKENS } from "@infra/di/container";
+import { Effect as E, Option as O, pipe, Schema as S } from "effect";
+import { inject, injectable } from "tsyringe";
+
+@injectable()
+export class HostWorkflow {
+    constructor(@inject(TOKENS.HOST_REPOSITORY) private readonly hostRepository: HostRepository) {}
+
+    // !collapse(1:18) collapsed
+    // initializeHostData helper method
+    private initializeHostData(input: Partial<SerializedHost>): SerializedHost {
+        const now = DateTime.now();
+        const defaultAddress: SerializedAddress = {
+            address: "", city: "", state: "", country: "", zipCode: ""
+        };
+        const defaultSocialLinks: SerializedSocialLinks = {
+            websiteLink: "", twitterLink: "", instagramLink: "",
+            facebookLink: "", venmoLink: "", googleReviewLink: ""
+        };
+        return {
+            ...input,
+            address: input.address ?? defaultAddress,
+            socialLinks: input.socialLinks ?? defaultSocialLinks,
+            createdAt: input.createdAt ?? now,
+            updatedAt: now
+        } as SerializedHost;
+    }
+
+    // !collapse(1:18) collapsed
+    // createHost method
+    createHost(input: CreateHostDTOEncoded): E.Effect<Host, HostError | ParseResult.ParseError> {
+        return pipe(
+            S.decodeUnknown(CreateHostDTOSchema)(input),
+            E.flatMap((dto: CreateHostDTO) => {
+                const hostData = this.initializeHostData({
+                    userId: dto.userId,
+                    dob: dto.dob,
+                    phoneNumber: dto.phoneNumber,
+                    profileImage: dto.profileImage,
+                    address: dto.address,
+                    socialLinks: dto.socialLinks
+                });
+                return Host.create(hostData);
+            }),
+            E.flatMap((host) => this.hostRepository.add(host))
+        );
+    }
+
+// !mark(1:38) #22c55e
+    /**
+     * Update host profile information (basic fields only)
+     */
+    updateHostProfile(input: UpdateHostProfileDTOEncoded): E.Effect<Host, HostError | ParseResult.ParseError> {
+        return pipe(
+            S.decodeUnknown(UpdateHostProfileDTOSchema)(input),
+            E.filterOrFail(
+                (dto): dto is UpdateHostProfileDTO => !!dto.id,
+                (dto) => new HostValidationError("missingId", dto, "Host ID is required")
+            ),
+            E.flatMap((dto) => UUID.create(dto.id).pipe(E.map((validId) => ({dto, validId})))),
+            E.flatMap(({dto, validId}) =>
+                this.hostRepository.fetchById!(validId).pipe(
+                    E.flatMap(
+                        O.match({
+                            onNone: () => E.fail(new HostNotFoundError(dto.id)),
+                            onSome: (existingHost) => E.succeed({dto, validId, existingHost})
+                        })
+                    )
+                )
+            ),
+            E.flatMap(({dto, validId, existingHost}) =>
+                existingHost.serialized().pipe(E.map((serialized) => ({dto, validId, serialized})))
+            ),
+            E.flatMap(({dto, validId, serialized}) => {
+                const updatedHostData = this.initializeHostData({
+                    ...serialized,
+                    ...dto,
+                    id: validId,
+                    updatedAt: DateTime.now()
+                } as Partial<SerializedHost>);
+
+                return Host.create(updatedHostData);
+            }),
+            E.flatMap((updatedHost) => this.hostRepository.update(updatedHost))
+        );
+    }
+}
+```
+
+## !!steps Specialized Update Workflows - Address and Social Links
+Add focused update workflows for specific value objects.
+
+```typescript !
+// !collapse(1:9) collapsed
+// imports
+import "reflect-metadata";
+import { Host } from "@domain/entities/user/host.entity";
+import { HostNotFoundError, HostValidationError } from "@domain/entities/user/host.error";
+import { PaginationOptions } from "@domain/utils/pagination";
+import { DateTime, UUID } from "@domain/utils/refined.types";
+import { TOKENS } from "@infra/di/container";
+import { Effect as E, Option as O, pipe, Schema as S } from "effect";
+import { inject, injectable } from "tsyringe";
+
+@injectable()
+export class HostWorkflow {
+    constructor(@inject(TOKENS.HOST_REPOSITORY) private readonly hostRepository: HostRepository) {}
+
+    // !collapse(1:4) collapsed
+    // initializeHostData helper method
+    private initializeHostData(input: Partial<SerializedHost>): SerializedHost {
+        // ... see implementation in respective steps
+    }
+
+    // !collapse(1:4) collapsed
+    // createHost method
+    createHost(input: CreateHostDTOEncoded): E.Effect<Host, HostError | ParseResult.ParseError> {
+        // ... see implementation in respective steps
+    }
+
+    // !collapse(1:34) collapsed
+    // updateHostProfile method
+    updateHostProfile(input: UpdateHostProfileDTOEncoded): E.Effect<Host, HostError | ParseResult.ParseError> {
+        return pipe(
+            S.decodeUnknown(UpdateHostProfileDTOSchema)(input),
+            E.filterOrFail(
+                (dto): dto is UpdateHostProfileDTO => !!dto.id,
+                (dto) => new HostValidationError("missingId", dto, "Host ID is required")
+            ),
+            E.flatMap((dto) => UUID.create(dto.id).pipe(E.map((validId) => ({dto, validId})))),
+            E.flatMap(({dto, validId}) =>
+                this.hostRepository.fetchById!(validId).pipe(
+                    E.flatMap(
+                        O.match({
+                            onNone: () => E.fail(new HostNotFoundError(dto.id)),
+                            onSome: (existingHost) => E.succeed({dto, validId, existingHost})
+                        })
+                    )
+                )
+            ),
+            E.flatMap(({dto, validId, existingHost}) =>
+                existingHost.serialized().pipe(E.map((serialized) => ({dto, validId, serialized})))
+            ),
+            E.flatMap(({dto, validId, serialized}) => {
+                const updatedHostData = this.initializeHostData({
+                    ...serialized,
+                    ...dto,
+                    id: validId,
+                    updatedAt: DateTime.now()
+                } as Partial<SerializedHost>);
+                return Host.create(updatedHostData);
+            }),
+            E.flatMap((updatedHost) => this.hostRepository.update(updatedHost))
+        );
+    }
+
+// !mark(1:67) #22c55e
+    /**
+     * Update host address
+     */
+    updateHostAddress(input: UpdateHostAddressDTOEncoded): E.Effect<Host, HostError | ParseResult.ParseError> {
+        return pipe(
+            S.decodeUnknown(UpdateHostAddressDTOSchema)(input),
+            E.flatMap((dto) => UUID.create(dto.id).pipe(E.map((validId) => ({dto, validId})))),
+            E.flatMap(({dto, validId}) =>
+                this.hostRepository.fetchById!(validId).pipe(
+                    E.flatMap(
+                        O.match({
+                            onNone: () => E.fail(new HostNotFoundError(dto.id)),
+                            onSome: (existingHost) => E.succeed({dto, existingHost})
+                        })
+                    )
+                )
+            ),
+            E.flatMap(({dto, existingHost}) =>
+                existingHost.serialized().pipe(
+                    E.flatMap((serialized) => {
+                        const updatedHostData = this.initializeHostData({
+                            ...serialized,
+                            address: dto.address,
+                            updatedAt: DateTime.now()
+                        } as Partial<SerializedHost>);
+
+                        return Host.create(updatedHostData);
+                    })
+                )
+            ),
+            E.flatMap((updatedHost) => this.hostRepository.update(updatedHost))
+        );
+    }
+
+    /**
+     * Update host social links  
+     */
+    updateHostSocialLinks(input: UpdateHostSocialLinksDTOEncoded): E.Effect<Host, HostError | ParseResult.ParseError> {
+        return pipe(
+            S.decodeUnknown(UpdateHostSocialLinksDTOSchema)(input),
+            E.flatMap((dto) => UUID.create(dto.id).pipe(E.map((validId) => ({dto, validId})))),
+            E.flatMap(({dto, validId}) =>
+                this.hostRepository.fetchById!(validId).pipe(
+                    E.flatMap(
+                        O.match({
+                            onNone: () => E.fail(new HostNotFoundError(dto.id)),
+                            onSome: (existingHost) => E.succeed({dto, existingHost})
+                        })
+                    )
+                )
+            ),
+            E.flatMap(({dto, existingHost}) =>
+                existingHost.serialized().pipe(
+                    E.flatMap((serialized) => {
+                        const updatedHostData = this.initializeHostData({
+                            ...serialized,
+                            socialLinks: dto.socialLinks,
+                            updatedAt: DateTime.now()
+                        } as Partial<SerializedHost>);
+
+                        return Host.create(updatedHostData);
+                    })
+                )
+            ),
+            E.flatMap((updatedHost) => this.hostRepository.update(updatedHost))
+        );
+    }
+}
+```
+
+## !!steps Simple Operations - Remove and Get Host
+Add straightforward CRUD operations with clean pipelines.
+
+```typescript !
+// !collapse(1:9) collapsed
+// imports
+import "reflect-metadata";
+import { Host } from "@domain/entities/user/host.entity";
+import { HostNotFoundError, HostValidationError } from "@domain/entities/user/host.error";
+import { PaginationOptions } from "@domain/utils/pagination";
+import { DateTime, UUID } from "@domain/utils/refined.types";
+import { TOKENS } from "@infra/di/container";
+import { Effect as E, Option as O, pipe, Schema as S } from "effect";
+import { inject, injectable } from "tsyringe";
+
+@injectable()
+export class HostWorkflow {
+    constructor(@inject(TOKENS.HOST_REPOSITORY) private readonly hostRepository: HostRepository) {}
+
+    // !collapse(1:4) collapsed
+    // initializeHostData helper method
+    private initializeHostData(input: Partial<SerializedHost>): SerializedHost {
+        // ... see implementation in respective steps
+    }
+
+    // !collapse(1:4) collapsed
+    // createHost method
+    createHost(input: CreateHostDTOEncoded): E.Effect<Host, HostError | ParseResult.ParseError> {
+        // ... see implementation in respective steps
+    }
+
+    // !collapse(1:4) collapsed
+    // updateHostProfile method
+    updateHostProfile(input: UpdateHostProfileDTOEncoded): E.Effect<Host, HostError | ParseResult.ParseError> {
+        // ... see implementation in respective steps
+    }
+
+    // !collapse(1:4) collapsed
+    // updateHostAddress and updateHostSocialLinks methods
+    updateHostAddress(input: UpdateHostAddressDTOEncoded): E.Effect<Host, HostError | ParseResult.ParseError> {
+        // ... see implementation in respective steps
+    }
+
+// !mark(1:21) #22c55e
+    /**
+     * Remove a host
+     */
+    removeHost(input: unknown): E.Effect<boolean, HostError | ParseResult.ParseError> {
+        return pipe(
+            S.decodeUnknown(RemoveHostDTOSchema)(input),
+            E.flatMap((dto) => UUID.create(dto.id)),
+            E.flatMap((validId) => this.hostRepository.remove(validId))
+        );
+    }
+
+    /**
+     * Get host by ID
+     */
+    getHost(hostId: string): E.Effect<Host, HostNotFoundError | ParseResult.ParseError> {
+        return pipe(
+            UUID.create(hostId),
+            E.flatMap((validId) => this.hostRepository.fetchById!(validId)),
+            E.map(O.getOrThrowWith(() => new HostNotFoundError(hostId)))
+        );
+    }
+}
+```
+
+## !!steps Fetch Operations - By User and Query
+Add fetch operations that handle Option mapping and complex queries.
+
+```typescript !
+// !collapse(1:9) collapsed
+// imports
+import "reflect-metadata";
+import { Host } from "@domain/entities/user/host.entity";
+import { HostNotFoundError, HostValidationError } from "@domain/entities/user/host.error";
+import { PaginationOptions } from "@domain/utils/pagination";
+import { DateTime, UUID } from "@domain/utils/refined.types";
+import { TOKENS } from "@infra/di/container";
+import { Effect as E, Option as O, pipe, Schema as S } from "effect";
+import { inject, injectable } from "tsyringe";
+
+@injectable()
+export class HostWorkflow {
+    constructor(@inject(TOKENS.HOST_REPOSITORY) private readonly hostRepository: HostRepository) {}
+
+    // !collapse(1:4) collapsed
+    // previous workflow methods
+    // ... see implementation in respective steps
+
+// !mark(1:25) #22c55e
+    /**
+     * Get host by user ID
+     */
+    getHostByUserId(input: unknown): E.Effect<Host, HostError | ParseResult.ParseError> {
+        return pipe(
+            S.decodeUnknown(GetHostByUserIdDTOSchema)(input),
+            E.flatMap((dto) =>
+                pipe(
+                    UUID.create(dto.userId),
+                    E.flatMap((validUserId) => this.hostRepository.fetchByUserId(validUserId)),
+                    E.map(O.getOrThrowWith(() => new HostNotFoundError(`user: ${dto.userId}`)))
+                )
+            )
+        );
+    }
+
+    /**
+     * Query hosts with pagination and filters
+     */
+    queryHosts(input: QueryHostsDTOEncoded): E.Effect<Paginated<Host>, HostError | ParseResult.ParseError> {
+        return pipe(
+            S.decodeUnknown(QueryHostsDTOSchema)(input),
+            E.flatMap((dto) =>
+                PaginationOptions.create({
+                    pageNum: dto.pageNum ?? 1,
+                    pageSize: dto.pageSize ?? 10
+                }).pipe(
+                    E.flatMap((paginationOptions) =>
+                        this.hostRepository.fetchByQuery({
+                            search: dto.search,
+                            city: dto.city,
+                            paginationOptions
+                        })
+                    )
+                )
+            )
+        );
+    }
+}
+```
+
+## !!steps Utility Operations - Profile Checks and Complete Profiles
+Complete the workflow with utility methods for profile management.
+
+```typescript !
+// !collapse(1:9) collapsed
+// imports
+import "reflect-metadata";
+import { Host } from "@domain/entities/user/host.entity";
+import { HostNotFoundError, HostValidationError } from "@domain/entities/user/host.error";
+import { PaginationOptions } from "@domain/utils/pagination";
+import { DateTime, UUID } from "@domain/utils/refined.types";
+import { TOKENS } from "@infra/di/container";
+import { Effect as E, Option as O, pipe, Schema as S } from "effect";
+import { inject, injectable } from "tsyringe";
+
+@injectable()
+export class HostWorkflow {
+    constructor(@inject(TOKENS.HOST_REPOSITORY) private readonly hostRepository: HostRepository) {}
+
+    // !collapse(1:4) collapsed
+    // previous workflow methods
+    // ... see implementation in respective steps
+
+// !mark(1:16) #22c55e
+    /**
+     * Check if user already has a host profile
+     */
+    hasHostProfile(userId: string): E.Effect<boolean, HostError | ParseResult.ParseError> {
+        return pipe(
+            UUID.create(userId),
+            E.flatMap((validUserId) => this.hostRepository.fetchByUserId(validUserId)),
+            E.map(O.isSome)
+        );
+    }
+
+    /**
+     * Get all hosts with complete profiles
+     */
+    getCompleteProfiles(): E.Effect<Paginated<Host>, HostError | ParseResult.ParseError> {
+        const defaultPagination = {pageNum: 1, pageSize: 100};
+
+        return pipe(
+            PaginationOptions.create(defaultPagination),
+            E.flatMap((options) => this.hostRepository.fetchWithCompleteProfiles(options))
+        );
+    }
+}
+```
+
+</ScrollyCoding>
+
+### Key Lessons
+
+1. **Schema-First Validation**: DTOs derive from domain entity schemas using `pick`, `partial`, and `extend` to ensure consistency and reduce duplication while maintaining type safety.
+
+2. **Effect Pipeline Composition**: All workflows follow the pattern: validate input → transform data → call domain/repository → handle errors, using `pipe` for predictable data flow.
+
+3. **Dependency Injection**: Workflows receive repository dependencies through constructor injection with `@injectable()` and `@inject()` for clean separation and testability.
+
+4. **Error Boundary Management**: Clear separation between parse errors (schema validation), domain errors (business rules), and repository errors (persistence), with explicit `Option` to error mapping.
+
+5. **Time and Identity Handling**: Application layer manages `createdAt`/`updatedAt` timestamps and UUID validation at workflow boundaries, keeping domain entities pure.
+
+6. **Fetch-Merge Pattern**: Update operations fetch existing entities, serialize to get current state, merge changes, and recreate entities to ensure all domain validations run.
+
+7. **Default Value Initialization**: Private helpers provide sensible defaults for complex value objects (Address, SocialLinks) when not provided in requests.
+
+8. **Repository Method Coordination**: Workflows orchestrate multiple repository calls (`fetchById`, `update`, `fetchByQuery`) while maintaining transactional consistency through Effect composition.

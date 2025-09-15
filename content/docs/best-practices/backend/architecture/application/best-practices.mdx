@@ -1,0 +1,513 @@
+---
+title: Best Practices
+description: "Proven patterns and anti-patterns for building robust application layer workflows with Effect Schema, dependency injection, and error boundary management."
+---
+
+import { BestPractice } from '@/components/ui/BestPractice';
+
+# Application Layer Best Practices
+
+This guide provides proven patterns for building robust application layer workflows that properly orchestrate domain entities and infrastructure repositories.
+
+## Schema-Derived DTO Patterns
+
+<BestPractice title="Schema-Derived DTO Patterns">
+
+Use schema-first approach to ensure single source of truth for API contracts and maintain consistency with domain models.
+
+## !dont manual-dto-types
+
+**Define DTOs separately from domain schemas.** This leads to:
+- Duplicated type definitions and validation logic
+- Inconsistencies between API and domain models
+- Maintenance issues when schema changes
+- Type mismatches with complex nested relationships
+
+```typescript !example
+// Bad: Manual DTO definition
+export interface CreateHostDTO {
+  userId: string; // No validation
+  dob?: Date; // Inconsistent optionality
+  phoneNumber?: number;
+}
+
+// Bad: Separate validation
+export function validateCreateHostDTO(input: unknown): CreateHostDTO {
+  // Manual validation logic duplicated from domain
+  if (!input.userId) throw new Error("userId required");
+  return input as CreateHostDTO;
+}
+
+// Bad: Type drift from domain
+export const CreateHostDTOSchema = S.Struct({
+  userId: S.String, // Domain uses StringToUUID
+  phoneNumber: S.Number // Domain uses Optional(S.Number)
+});
+```
+
+## !do schema-derived
+
+**Derive DTOs from domain entity schemas.** This provides:
+- **Single source of truth** for validation rules
+- **Automatic consistency** between API and domain
+- **Reduced duplication** with schema reuse
+- **Type safety** throughout the pipeline
+
+```typescript !example
+// Good: Derive from existing entity schema
+export const CreateHostDTOSchema = S.Struct({
+  userId: StringToUUID, // Reuse domain validation
+  dob: S.optional(HostSchema.fields.dob), // Consistent with domain
+  phoneNumber: S.optional(HostSchema.fields.phoneNumber),
+  profileImage: S.optional(HostSchema.fields.profileImage)
+});
+
+// Good: Use schema composition for updates
+export const UpdateHostProfileDTOSchema = HostSchema
+  .pick("dob", "phoneNumber", "profileImage")
+  .pipe(S.partialWith({exact: true}))
+  .pipe(S.extend(S.Struct({id: StringToUUID})));
+
+// Good: Automatic type derivation
+export type CreateHostDTO = S.Schema.Type<typeof CreateHostDTOSchema>;
+export type CreateHostDTOEncoded = S.Schema.Encoded<typeof CreateHostDTOSchema>;
+```
+
+</BestPractice>
+
+## Effect Pipeline Composition
+
+<BestPractice title="Effect Pipeline Composition">
+
+Structure workflows as predictable data pipelines with clear validation boundaries and error handling.
+
+## !dont imperative-workflows
+
+**Use imperative style with exception-based error handling.** This creates:
+- Unpredictable error propagation
+- Mixed synchronous and asynchronous code paths
+- Difficult error boundary management
+- Hard to test and compose operations
+
+```typescript !example
+// Bad: Imperative style with exceptions
+async createHost(input: unknown): Promise<Host> {
+  try {
+    // Mixed validation approaches
+    if (!input || typeof input !== 'object') {
+      throw new Error("Invalid input");
+    }
+    
+    const dto = input as CreateHostDTO; // Unsafe casting
+    
+    // Manual validation
+    if (!dto.userId) {
+      throw new ValidationError("userId required");
+    }
+    
+    // Nested try-catch for domain operations
+    let host: Host;
+    try {
+      host = await Host.create(dto); // Domain might throw
+    } catch (domainError) {
+      throw new HostValidationError(domainError.message);
+    }
+    
+    // Repository call without proper error handling
+    return await this.hostRepository.add(host);
+  } catch (error) {
+    // Generic error handling loses context
+    throw error;
+  }
+}
+```
+
+## !do effect-pipelines
+
+**Use Effect pipelines for predictable data flow.** They provide:
+- **Explicit error types** at each stage
+- **Composable operations** with clear boundaries
+- **Consistent error handling** throughout the pipeline
+- **Easy testing** with deterministic behavior
+
+```typescript !example
+// Good: Effect pipeline composition
+createHost(input: CreateHostDTOEncoded): E.Effect<Host, HostError | ParseResult.ParseError> {
+  return pipe(
+    // 1. Schema validation boundary
+    S.decodeUnknown(CreateHostDTOSchema)(input),
+    E.flatMap((dto: CreateHostDTO) => {
+      // 2. Data initialization
+      const hostData = this.initializeHostData({
+        userId: dto.userId,
+        dob: dto.dob,
+        phoneNumber: dto.phoneNumber,
+        profileImage: dto.profileImage
+      });
+      
+      // 3. Domain entity creation
+      return Host.create(hostData);
+    }),
+    // 4. Repository persistence
+    E.flatMap((host) => this.hostRepository.add(host))
+  );
+}
+
+// Good: Clear error boundaries
+E.map(O.getOrThrowWith(() => new HostNotFoundError(hostId)))
+```
+
+</BestPractice>
+
+## Dependency Injection Patterns
+
+<BestPractice title="Dependency Injection Patterns">
+
+Use constructor injection with proper token management for clean separation of concerns and testability.
+
+## !dont direct-instantiation
+
+**Directly instantiate repositories in workflows.** This causes:
+- Tight coupling between layers
+- Difficult unit testing with mocks
+- Hard-coded dependencies
+- Violation of dependency inversion principle
+
+```typescript !example
+// Bad: Direct repository instantiation
+export class HostWorkflow {
+  private hostRepository: HostRepository;
+  
+  constructor() {
+    // Hard-coded dependency
+    this.hostRepository = new PostgresHostRepository(); 
+  }
+  
+  // Bad: Mixed concerns - workflow knows about DB
+  async createHost(input: CreateHostDTOEncoded) {
+    const connection = await createConnection(); // Infrastructure concern
+    const repository = new PostgresHostRepository(connection);
+    // ...
+  }
+}
+
+// Bad: Service locator anti-pattern
+export class HostWorkflow {
+  createHost(input: CreateHostDTOEncoded) {
+    const repository = ServiceLocator.get('HOST_REPOSITORY'); // Hidden dependency
+    // ...
+  }
+}
+```
+
+## !do constructor-injection
+
+**Use constructor injection with dependency tokens.** This ensures:
+- **Loose coupling** between workflow and repository implementations
+- **Easy testing** with mock repositories
+- **Clear dependencies** visible in constructor
+- **Inversion of control** following SOLID principles
+
+```typescript !example
+// Good: Constructor injection with tokens
+@injectable()
+export class HostWorkflow {
+  constructor(
+    @inject(TOKENS.HOST_REPOSITORY)
+    private readonly hostRepository: HostRepository,
+    @inject(TOKENS.USER_REPOSITORY) 
+    private readonly userRepository: UserRepository
+  ) {}
+  
+  createHost(input: CreateHostDTOEncoded): E.Effect<Host, HostError> {
+    return pipe(
+      S.decodeUnknown(CreateHostDTOSchema)(input),
+      E.flatMap((dto) => Host.create(this.initializeHostData(dto))),
+      E.flatMap((host) => this.hostRepository.add(host)) // Clean interface
+    );
+  }
+}
+
+// Good: Clear token definition
+export const TOKENS = {
+  HOST_REPOSITORY: Symbol.for('HOST_REPOSITORY'),
+  USER_REPOSITORY: Symbol.for('USER_REPOSITORY')
+} as const;
+
+// Good: Easy testing with mocks
+const mockRepository = createMock<HostRepository>();
+const workflow = new HostWorkflow(mockRepository);
+```
+
+</BestPractice>
+
+## Option to Error Mapping
+
+<BestPractice title="Option to Error Mapping">
+
+Transform repository `Option` returns into clear error boundaries for API consumers.
+
+## !dont option-leakage
+
+**Let Option types leak to API boundaries.** This forces:
+- API consumers to handle Option unwrapping
+- Inconsistent error responses
+- Mixed success/failure semantics
+- Complex client-side error handling
+
+```typescript !example
+// Bad: Option leakage to API layer
+getHost(hostId: string): E.Effect<O.Option<Host>, RepositoryError> {
+  return UUID.create(hostId).pipe(
+    E.flatMap((validId) => this.hostRepository.fetchById(validId))
+    // Returns Option<Host> - API must handle None case
+  );
+}
+
+// Bad: Inconsistent error handling
+async getHostController(req: Request, res: Response) {
+  const result = await E.runPromise(workflow.getHost(req.params.id));
+  
+  if (O.isNone(result)) {
+    // API layer handling Option logic
+    return res.status(404).json({error: "Not found"});
+  }
+  
+  return res.json(O.getOrThrow(result));
+}
+
+// Bad: Mixed Option and error returns
+getHostProfile(userId: string): E.Effect<{host: O.Option<Host>, error?: string}> {
+  // Confusing return type mixing Option and error states
+}
+```
+
+## !do clear-error-boundaries
+
+**Transform Options to clear error signals.** This provides:
+- **Consistent error semantics** across all operations
+- **Clear API contracts** with explicit error types
+- **Simplified error handling** for consumers
+- **Predictable failure modes**
+
+```typescript !example
+// Good: Clear error boundary transformation
+getHost(hostId: string): E.Effect<Host, HostNotFoundError | ParseResult.ParseError> {
+  return pipe(
+    UUID.create(hostId),
+    E.flatMap((validId) => this.hostRepository.fetchById(validId)),
+    E.map(O.getOrThrowWith(() => new HostNotFoundError(hostId))) // Transform Option to error
+  );
+}
+
+// Good: Clean API error handling
+async getHostController(req: Request, res: Response) {
+  return pipe(
+    workflow.getHost(req.params.id),
+    E.match({
+      onFailure: (error) => {
+        if (error instanceof HostNotFoundError) {
+          return res.status(404).json({error: error.message});
+        }
+        return res.status(400).json({error: "Invalid request"});
+      },
+      onSuccess: (host) => res.json(host.serialize())
+    })
+  );
+}
+
+// Good: Explicit error union types
+type HostWorkflowError = 
+  | HostNotFoundError 
+  | HostValidationError 
+  | ParseResult.ParseError;
+```
+
+</BestPractice>
+
+## Immutable Update Patterns
+
+<BestPractice title="Immutable Update Patterns">
+
+Use fetch-serialize-merge-recreate pattern to ensure all domain validations run on updates.
+
+## !dont direct-mutation
+
+**Update entity properties directly.** This bypasses:
+- Domain validation on changes
+- Business rule enforcement
+- Consistent state management
+- Audit trail creation
+
+```typescript !example
+// Bad: Direct property mutation
+updateHostProfile(hostId: string, updates: Partial<HostData>): E.Effect<Host> {
+  return pipe(
+    this.hostRepository.fetchById(hostId),
+    E.map(O.getOrThrow),
+    E.map((host) => {
+      // Direct mutation bypasses validation
+      if (updates.phoneNumber) host.phoneNumber = updates.phoneNumber;
+      if (updates.dob) host.dob = updates.dob;
+      host.updatedAt = new Date(); // Manual timestamp management
+      return host;
+    }),
+    E.flatMap((host) => this.hostRepository.update(host))
+  );
+}
+
+// Bad: Partial entity updates without recreation
+updateHostProfile(updates: UpdateHostProfileDTO): E.Effect<Host> {
+  return this.hostRepository.updatePartial(updates.id, {
+    phoneNumber: updates.phoneNumber, // Bypasses domain validation
+    dob: updates.dob,
+    updatedAt: new Date()
+  });
+}
+```
+
+## !do fetch-serialize-merge
+
+**Use fetch-serialize-merge-recreate pattern.** This ensures:
+- **All domain validations** run on every update
+- **Consistent state transitions** through entity recreation
+- **Proper timestamp management** by the application layer
+- **Business rule enforcement** on all changes
+
+```typescript !example
+// Good: Fetch-serialize-merge-recreate pattern
+updateHostProfile(input: UpdateHostProfileDTOEncoded): E.Effect<Host, HostError> {
+  return pipe(
+    S.decodeUnknown(UpdateHostProfileDTOSchema)(input),
+    E.flatMap((dto) => 
+      pipe(
+        UUID.create(dto.id),
+        E.flatMap((validId) => this.hostRepository.fetchById(validId)),
+        E.map(O.getOrThrowWith(() => new HostNotFoundError(dto.id))),
+        E.flatMap((existingHost) => 
+          // 1. Serialize current state
+          existingHost.serialized().pipe(
+            E.flatMap((serialized) => {
+              // 2. Merge updates with current data
+              const updatedData = this.initializeHostData({
+                ...serialized,
+                ...dto, // Partial updates overlay current state
+                id: validId,
+                updatedAt: DateTime.now() // Application manages time
+              });
+              
+              // 3. Recreate entity with full validation
+              return Host.create(updatedData);
+            })
+          )
+        ),
+        E.flatMap((updatedHost) => this.hostRepository.update(updatedHost))
+      )
+    )
+  );
+}
+
+// Good: Immutable helper for data initialization
+private initializeHostData(input: Partial<SerializedHost>): SerializedHost {
+  const now = DateTime.now();
+  return {
+    ...input,
+    address: input.address ?? this.getDefaultAddress(),
+    socialLinks: input.socialLinks ?? this.getDefaultSocialLinks(),
+    createdAt: input.createdAt ?? now,
+    updatedAt: now // Always update timestamp
+  } as SerializedHost;
+}
+```
+
+</BestPractice>
+
+## Fetch and Merge Patterns
+
+<BestPractice title="Fetch and Merge Patterns">
+
+Use consistent fetch-and-merge patterns for all update operations to ensure data integrity and proper workflow orchestration.
+
+## !dont direct-updates
+
+**Update entities without fetching existing state.** This leads to:
+- **Data loss** from concurrent modifications
+- **Inconsistent partial updates** without proper validation
+- **Missing business rule enforcement** on existing data
+- **Timestamp and audit trail issues**
+
+```typescript !example
+// Bad: Update without fetching current state
+updateHostAddress(input: UpdateHostAddressDTOEncoded): E.Effect<Host, HostError> {
+  return pipe(
+    S.decodeUnknown(UpdateHostAddressDTOSchema)(input),
+    E.flatMap((dto) => 
+      Host.create({
+        id: dto.id,
+        address: dto.address, // Missing all other required fields!
+        updatedAt: DateTime.now()
+        // Where are userId, createdAt, etc.?
+      } as SerializedHost)
+    ),
+    E.flatMap((host) => this.hostRepository.update(host))
+  );
+}
+
+// Bad: Repository-level partial updates
+updateHostSocialLinks(dto: UpdateHostSocialLinksDTO): E.Effect<boolean> {
+  return this.hostRepository.updateFields(dto.id, {
+    socialLinks: dto.socialLinks // Bypasses all domain validation
+  });
+}
+```
+
+## !do fetch-merge-pattern
+
+**Always fetch existing state before merging updates.** This provides:
+- **Complete entity state** for proper validation
+- **Conflict resolution** with concurrent modifications
+- **Business rule enforcement** on the complete entity
+- **Consistent audit trails** and timestamp management
+
+```typescript !example
+// Good: Fetch existing state first
+updateHostAddress(input: UpdateHostAddressDTOEncoded): E.Effect<Host, HostError> {
+  return pipe(
+    S.decodeUnknown(UpdateHostAddressDTOSchema)(input),
+    E.flatMap((dto) => 
+      pipe(
+        UUID.create(dto.id),
+        // 1. Fetch existing complete state
+        E.flatMap((validId) => this.hostRepository.fetchById(validId)),
+        E.map(O.getOrThrowWith(() => new HostNotFoundError(dto.id))),
+        // 2. Serialize current state for merging
+        E.flatMap((existingHost) => 
+          existingHost.serialized().pipe(
+            E.flatMap((serialized) => {
+              // 3. Merge only the address field with existing data
+              const updatedData = this.initializeHostData({
+                ...serialized, // Keep all existing data
+                address: dto.address, // Update only address
+                updatedAt: DateTime.now()
+              });
+              
+              // 4. Recreate entity with full validation
+              return Host.create(updatedData);
+            })
+          )
+        ),
+        E.flatMap((updatedHost) => this.hostRepository.update(updatedHost))
+      )
+    )
+  );
+}
+```
+
+</BestPractice>
+
+## Next Steps
+
+- [Overview](./overview) - Application layer concepts and complete workflow example
+- [Domain Best Practices](../domain/domain-best-practices) - Entity and value object patterns  
+- [Infrastructure Overview](../infrastructure/infrastructure-overview) - Repository patterns and data persistence
+

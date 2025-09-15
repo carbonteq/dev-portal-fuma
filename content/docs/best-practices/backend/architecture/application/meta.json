@@ -1,0 +1,9 @@
+{
+  "title": "Application",
+  "defaultOpen": true,
+  "pages": [
+    "overview",
+    "best-practices"
+  ]
+}
+

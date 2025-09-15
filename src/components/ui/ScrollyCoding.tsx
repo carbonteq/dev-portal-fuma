@@ -8,6 +8,7 @@ import { wordWrap } from "./annotations/word-wrap";
 import { callout, warning, error, info } from "./annotations/callouts";
 import { mark } from "./annotations/mark";
 import { collapsable, collapseTrigger, collapseContent } from "./annotations/collapsable";
+import { ScrollArea } from "./scroll-area";
 
 
 // @ts-expect-error - Codehike types are not compatible with Zod
@@ -47,7 +48,7 @@ export function ScrollyCoding(props: unknown) {
                   </div>
 
                   {/* Step content */}
-                  <div className="prose prose-sm max-w-none text-gray-700">
+                  <div className="prose prose-sm max-w-none text-gray-700 [&_a]:text-[var(--color-fd-primary)] [&_a:hover]:opacity-80 [&_a]:underline">
                     {step.children}
                   </div>
                 </div>
@@ -57,13 +58,15 @@ export function ScrollyCoding(props: unknown) {
           </div>
 
           {/* Right Side - Code Display */}
-          <div className="basis-[55%] min-w-[400px] xl:w-[500px] max-w-xl bg-gray-50 rounded-r-lg">
-            <div className="custom-scrollbar top-10 xl:top-0 sticky h-[calc(100vh-2.5rem)] xl:h-[100vh] rounded-r-lg">
-              <Selection
-                from={steps.map((step, i) => (
-                  <Code key={`${i}-${step.title ?? 'step'}`} codeblock={step.code} className="min-h-full border px-4 py-3 rounded-md rounded-l-none text-sm" />
-                ))}
-              />
+          <div className="basis-[60%] min-w-[400px] xl:w-[500px] max-w-xl bg-gray-50 rounded-r-lg">
+            <div className="top-10 xl:top-0 sticky h-[calc(100vh-2.5rem)] xl:h-[100vh] rounded-r-lg">
+              <ScrollArea className="h-full rounded-r-lg">
+                <Selection
+                  from={steps.map((step, i) => (
+                    <Code key={`${i}-${step.title ?? 'step'}`} codeblock={step.code} className="min-h-full border px-4 py-3 rounded-md rounded-l-none text-sm" />
+                  ))}
+                />
+              </ScrollArea>
             </div>
           </div>
         </div>
