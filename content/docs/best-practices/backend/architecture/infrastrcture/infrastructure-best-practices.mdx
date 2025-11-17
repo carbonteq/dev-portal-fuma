@@ -2,238 +2,388 @@
 title: Best Practices
 ---
 
-## Repository Responsibility Patterns
+---
 
-<BestPractice title="Repository Responsibility Patterns">
+## Shared Column Utility Patterns
 
-Keep infrastructure repositories focused on persistence concerns and avoid mixing in domain logic.
+<BestPractice title="Shared Column Utility Patterns">
 
-## !dont domain-logic-in-repo
+Use a shared columns utility for repeated technical columns (ids, timestamps, etc.) instead of redefining them in every table.
 
-**Mix business rules and cross-cutting concerns inside repositories.** This causes:
+## !dont copy-paste-columns
 
-- Blurred boundaries between domain and infrastructure  
-- Hard-to-test domain logic coupled to the database  
-- Duplicate rules spread across multiple repositories  
+**Repeat common columns manually in every table.** This leads to:
+
+- Inconsistent column names and types across tables  
+- Hard-to-apply global changes (e.g., changing timestamp mode)  
+- Copy–paste errors when adding new tables  
 
 ```typescript !example
-// File: infra/repositories/user.repository.impl.ts
+// ❌ Bad: Each table redefines common columns by hand
 
-// ❌ Bad: Repository implementing domain rules
-export class UserRepositoryImpl {
-  constructor(private readonly db: DbClient) {}
+// File: infra/database/tables/user.table.ts
+export const userTable = pgTable("users", {
+  id: uuid("id").primaryKey().notNull(),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+  email: varchar("email", { length: 320 }),
+});
 
-  async updateEmail(userId: UUID, newEmail: string): Promise<void> {
-    // This is a domain rule that should be in the domain layer not in the repository
-    if (!newEmail.endsWith("@company.com")) {
-      // Domain rule lives in infra
-      throw new Error("Invalid email domain");
-    }
-    // infrastructure concerns
-    await this.db
-      .update(userTable)
-      .set({ email: newEmail })
-      .where(eq(userTable.id, userId));
-  }
-}
+// File: infra/database/tables/document.table.ts
+export const documentTable = pgTable("documents", {
+  id: uuid("id").primaryKey().notNull(),                         // duplicated
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(), // duplicated
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(), // duplicated
+  title: varchar("title", { length: 255 }),
+});
 ````
 
-## !do persistence-only-repo
+## !do shared-columns-utility
 
-**Keep repositories responsible for data access only.** This provides:
+**Extract shared columns into a tiny helper module.** This provides:
 
-* **Clear separation of concerns** between domain rules and persistence
-* **Testable domain logic** without DB dependencies
-* **Reusable persistence primitives** across use cases
+* **Consistent column definitions** for ids and timestamps
+* **Single place** to change types/defaults for all tables
+* **Clear intent** about “technical” columns vs business columns
 
 ```typescript !example
-// File: infra/repositories/user.repository.impl.ts
+// File: infra/database/utils/shared-cols.ts
+import { timestamp, uuid } from "drizzle-orm/pg-core";
 
-export class UserRepositoryImpl {
-  constructor(private readonly db: DbClient) {}
+// Small helper for UUID columns
+export const UuidCol = (name: string) => uuid(name);
 
-  async updateEmail(userId: UUID, email: string): Promise<void> {
-    await this.db
-      .update(userTable)
-      .set({ email })
-      .where(eq(userTable.id, userId));
-  }
+// Shared technical columns for all tables
+export const SharedColumns = {
+  id: UuidCol("id").primaryKey().notNull(),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+};
+```
 
-  async findById(userId: UUID): Promise<User | null> {
-    const rows = await this.db
-      .select()
-      .from(userTable)
-      .where(eq(userTable.id, userId))
-      .limit(1);
+```typescript !example
+// File: infra/database/tables/user.table.ts
+import { SharedColumns } from "@infra/database/utils/shared-cols";
 
-    return rows[0] ? rowToEntity(rows[0]) : null;
-  }
-}
+export const userTable = pgTable("users", {
+  ...SharedColumns, // id, createdAt, updatedAt
+  email: varchar("email", { length: 320 }),
+});
 
+// File: infra/database/tables/document.table.ts
+import { SharedColumns } from "@infra/database/utils/shared-cols";
+
+export const documentTable = pgTable("documents", {
+  ...SharedColumns, // id, createdAt, updatedAt
+  title: varchar("title", { length: 255 }),
+});
 ```
 
 </BestPractice>
 
 ---
 
-## Table & Schema Boundary Patterns
+## Serialization & Flattening Patterns
 
-<BestPractice title="Table & Schema Boundary Patterns">
+<BestPractice title="Serialization & Flattening Patterns">
 
-Keep table definitions and ORM-specific types inside the infrastructure layer and map them to domain entities.
+Use schema-driven serialization to flatten nested domain objects into DB-friendly rows and to reconstruct entities from rows.
 
-## !dont leak-table-types
+## !dont ad-hoc-nested-mapping
 
-**Expose ORM/table types directly to domain or application code.** This leads to:
+**Manually map nested objects inline in each repository method.** This causes:
 
-* Tight coupling to a specific database/ORM
-* Confusion between "row shape" and domain entity
-* Painful refactors when schema or tooling changes
+* Repeated, slightly different mapping logic in multiple places
+* Easy-to-miss fields when the domain model changes
+* Hidden coupling between DB shapes and domain shapes
 
 ```typescript !example
-// File: infra/database/tables/user.table.ts
-export const userTable = pgTable("users", {
-  id: uuid("id").primaryKey(),
-  email: varchar("email", { length: 320 }),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+// ❌ Bad: Manual, scattered mapping logic in each repository method
 
-// ❌ Bad: Domain (domain/user/user.entity.ts) depends on Infra (infra/database/tables/user.table.ts).
-// This flips the usual dependency direction. In layered architecture, infra is supposed to depend on domain, not the other way around.
-import { userTable } from "@infra/database/tables/user.table";
+const host = /* Host entity from domain */;
 
-export type UserType = typeof userTable.$inferSelect; // Leaks ORM into domain
+// Repository manually flattens nested objects into columns
+const row = {
+  id: host.id,
+  firstName: host.firstName,
+  lastName: host.lastName,
 
-export class User {
-  constructor(readonly data: UserType) {}
-}
+  // address flattened by hand
+  country: host.address.country,
+  city: host.address.city,
+  state: host.address.state,
+  zipCode: host.address.zipCode,
+  address: host.address.address,
+
+  // socialLinks flattened by hand
+  websiteLink: host.socialLinks.websiteLink,
+  instagramLink: host.socialLinks.instagramLink,
+  // ...
+};
+
+// Another method repeats a similar manual mapping for a different query…
 ```
 
-## !do row-to-entity-mapping
+## !do schema-driven-serialization
 
-**Map table rows to domain entities inside infra.** This provides:
+**Use a single serialization / deserialization path (e.g. Effect Schema) to flatten and rebuild entities.** This provides:
 
-* **Stable domain model** independent of persistence details
-* **Single mapping location** for each entity
-* **Flexibility** to change schema or ORM over time
+* **Centralized mapping** between domain entity ↔ serialized shape ↔ DB row
+* **Safer nested handling** for value objects and aggregates
+* **Reusable helpers** in the repository instead of ad-hoc mapping
+
+```typescript !example
+// File: domain/user/user.schema.ts
+import * as S from "@effect/schema/Schema";
+
+export const UserSchema = S.Struct({
+  id: S.String,          // already branded at the domain layer
+  firstName: S.String,
+  lastName: S.String,
+  // address + socialLinks are already flattened to DB-friendly shape here
+  country: S.String,
+  city: S.String,
+  websiteLink: S.optional(S.String),
+});
+
+export type SerializedUser = S.Schema.Encoded<typeof UserSchema>;
+```
 
 ```typescript !example
 // File: domain/user/user.entity.ts
 export class User {
-  constructor(
-    readonly id: UUID,
-    readonly email: Email,
-    readonly createdAt: Date,
-  ) {}
-}
+  // ...
 
-// File: infra/database/tables/user.table.ts
-export const userTable = pgTable("users", {
-  id: uuid("id").primaryKey(),
-  email: varchar("email", { length: 320 }),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+  // Domain entity → SerializedUser (flattened)
+  serialized(): E.Effect<SerializedUser, SerializationError, never> {
+    return S.encode(UserSchema)(this).pipe(
+      E.mapError(
+        (err) =>
+          new SerializationError("Failed to serialize User", "User", err),
+      ),
+    );
+  }
 
-type UserRow = typeof userTable.$inferSelect;
-
-// File: infra/repositories/user.repository.impl.ts
-// create a User entity with domain types instead of just using the DB row type
-const rowToEntity = (row: UserRow): User =>
-  new User(row.id, Email.of(row.email), row.createdAt);
-
-export class UserRepositoryImpl {
-  constructor(private readonly db: DbClient) {}
-
-  async findById(id: UUID): Promise<User | null> {
-    const rows = await this.db
-      .select()
-      .from(userTable)
-      .where(eq(userTable.id, id))
-      .limit(1);
-
-    return rows[0] ? rowToEntity(rows[0]) : null;
+  // SerializedUser → Domain entity
+  static create(
+    input: SerializedUser,
+  ): E.Effect<User, DeserializationError, never> {
+    return S.decodeUnknown(UserSchema)(input).pipe(
+      E.map((data) => new User(data)),
+      E.mapError(
+        (err) =>
+          new DeserializationError(
+            "Failed to deserialize User",
+            "User",
+            err,
+          ),
+      ),
+    );
   }
 }
+```
+
+```typescript !example
+// File: infra/repositories/user.drizzle.repository.ts
+
+export class UserDrizzleRepository extends UserRepository {
+  constructor(private readonly db: any) {
+    super();
+  }
+
+  // SerializedUser -> DB row
+  private toDbSerialized(serialized: SerializedUser,): E.Effect<SerializedUser, SerializationError, never> 
+  {
+    return E.succeed(serialized);
+  }
+
+  // DB row -> domain User entity using the domain create()
+  private fromDbRow(row: any): E.Effect<User, QueryError, never> {
+    return pipe(
+      User.create(row as SerializedUser),
+      E.mapError(
+        (err) =>
+          new DeserializationError(
+            "Failed to deserialize User from DB",  "User", err,
+        ),
+      ),
+    );
+  }
+
+  // Example: domain User -> SerializedUser -> insert into DB
+  add(entity: User): RepositoryEffect<User, MutationError> {
+    return pipe(
+      entity.serialized(), // User -> SerializedUser (flattened)
+      E.flatMap((serialized) => this.toDbSerialized(serialized)),
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.insert(users).values(dbData),
+          catch: (error) =>
+            new UserMutationError(
+              "add",  `Failed to add user: ${error}`, "User", entity.id,
+            ),
+        }),
+      ),
+      E.as(entity),
+    );
+  }
+}
+
 ```
 
 </BestPractice>
 
 ---
 
-## Migration & Seeding Patterns
+## Query Helper Utility Patterns
 
-<BestPractice title="Migration & Seeding Patterns">
+<BestPractice title="Query Helper Utility Patterns">
 
-Treat migrations and seeders as an immutable history for your database schema and reference data.
+Extract reusable query helpers (execute, map, single/multiple) instead of re-implementing query + error + mapping logic in every method.
 
-## !dont edit-old-migrations
+## !dont repeated-query-logic
 
-**Modify existing migration files or write non-idempotent seeds.** This results in:
+**Inline query execution and mapping in every repository method.** This causes:
 
-* Divergent schemas across environments
-* Broken rollbacks and unreproducible states
-* Hard-to-debug schema drift in CI/production
+* Duplicated error handling and logging
+* Slightly different behaviors for “single vs multiple” queries
+* Harder to introduce cross-cutting concerns (timeouts, metrics, etc.)
 
 ```typescript !example
-// ❌ Bad: Editing an old migration to add a new column
-// File: infra/database/migrations/initial_users.ts
-export async function up(db: DbClient) {
-  await db.schema.createTable("users", (t) => {
-    t.uuid("id").primaryKey();
-    t.text("email").notNull();
-    // Months later:
-    t.text("display_name"); // Added afterwards – history changed
+// ❌ Bad: Each method does its own query + error + mapping
+
+fetchByUserId(userId: UUID): RepositoryEffect<O.Option<Host>, HostNotFoundError> {
+  return E.tryPromise({
+    try: () =>
+      this.db.select().from(hosts).where(eq(hosts.userId, userId)).limit(1),
+    catch: () => new HostNotFoundError(),
+  }).pipe(
+    E.flatMap((rows) => {
+      if (rows.length === 0) {
+        return E.succeed(O.none());
+      }
+
+      // Inline DB row -> Host mapping
+      const row = rows[0];
+      const serializedHost = {
+        ...row,
+        address: { /* ... */ },
+        socialLinks: { /* ... */ },
+      };
+
+      return Host.create(serializedHost).pipe(
+        E.map(O.some),
+        E.mapError(() => new HostNotFoundError()),
+      );
+    }),
+  );
+}
+```
+
+## !do reusable-query-helpers
+
+**Centralize query execution and mapping in small helpers.** This provides:
+
+* **Single place** to handle driver errors and wrap them in repository errors
+* **Consistent behavior** for “single” and “multiple” fetch patterns
+* **Cleaner repository methods** focused only on *what* they query
+
+```typescript !example
+// File: infra/database/utils/execute-query.ts
+import { Effect as E } from "effect";
+
+/**
+ * Wrap a DB Promise in an Effect and map driver errors to a repository error.
+ */
+export function executeQuery<T, EErr>(
+  query: () => Promise<T>,
+  onError: (cause: unknown) => EErr,
+): E.Effect<T, EErr> {
+  return E.tryPromise({
+    try: query,
+    catch: onError,
   });
 }
 ```
 
-## !do append-only-migrations
-
-**Keep migrations append-only and seeds idempotent.** This ensures:
-
-* **Reproducible schema history** across all environments
-* **Safe rollbacks** with clear up/down operations
-* **Predictable seed data** for tests and local dev
-
 ```typescript !example
-// File: infra/database/migrations/initial_users.ts
-// Create the initial "users" table.
-export async function up(db: DbClient) {
-  await db.schema.createTable("users", (t) => {
-    t.uuid("id").primaryKey();
-    t.text("email").notNull();
-  });
+// File: infra/repositories/host.drizzle.repository.ts
+type HostRow = typeof hosts.$inferSelect;
+
+const rowToHost = (row: HostRow): E.Effect<Host, HostNotFoundError> => {
+  // Map flat DB row into the serialized shape expected by Host.create().
+  const serializedHost = {
+    ...row,
+    address: {
+      country: row.country,
+      city: row.city,
+      state: row.state,
+      zipCode: row.zipCode,
+      address: row.address,
+    },
+    socialLinks: {
+      websiteLink: row.websiteLink,
+      venmoLink: row.venmoLink,
+      googleReviewLink: row.googleReviewLink,
+      facebookLink: row.facebookLink,
+      instagramLink: row.instagramLink,
+      twitterLink: row.twitterLink,
+    },
+  };
+
+  return pipe(
+    Host.create(serializedHost),
+    E.mapError(() => new HostNotFoundError()),
+  );
+};
+
+export class HostDrizzleRepository {
+  constructor(private readonly db: DrizzleDB) {}
+
+  // One row or none
+  private fetchSingle(
+    query: () => Promise<HostRow[]>,
+  ): E.Effect<O.Option<Host>, HostNotFoundError> {
+    return pipe(
+      executeQuery(query, () => new HostNotFoundError()),
+      E.map(O.fromIterable),
+      E.flatMap((option) =>
+        O.match(option, {
+          onNone: () => E.succeed(O.none()),
+          onSome: (row) => pipe(rowToHost(row), E.map(O.some)),
+        }),
+      ),
+    );
+  }
+
+  // Many rows
+  private fetchMultiple(
+    query: () => Promise<HostRow[]>,
+  ): E.Effect<readonly Host[], HostNotFoundError> {
+    return pipe(
+      executeQuery(query, () => new HostNotFoundError()),
+      E.flatMap((rows) => E.all(rows.map((row) => rowToHost(row)))),
+    );
+  }
+
+  // Repository methods become small and declarative:
+
+  fetchByUserId(
+    userId: UUID,
+  ): RepositoryEffect<O.Option<Host>, HostNotFoundError> {
+    return this.fetchSingle(() =>
+      this.db.select().from(hosts).where(eq(hosts.userId, userId)).limit(1),
+    );
+  }
+
+  fetchByPhoneNumber(
+    phoneNumber: number,
+  ): RepositoryEffect<readonly Host[], HostNotFoundError> {
+    return this.fetchMultiple(() =>
+      this.db.select().from(hosts).where(eq(hosts.phoneNumber, phoneNumber)),
+    );
+  }
 }
-
-// Drop the "users" table (rollback for this migration).
-export async function down(db: DbClient) {
-  await db.schema.dropTable("users");
-}
-
-// New migration, not editing an old one.
-// File: infra/database/migrations/add_display_name_to_users.ts
-// Add "display_name" column to the existing "users" table.
-export async function up(db: DbClient) {
-  await db.schema.alterTable("users", (t) => {
-    t.text("display_name");
-  });
-}
-
-// Remove "display_name" column (rollback for this migration).
-export async function down(db: DbClient) {
-  await db.schema.alterTable("users", (t) => {
-    t.dropColumn("display_name");
-  });
-}
-
-
-// File: infra/services/run-migrations.ts
-
-// Run all pending migrations from the migrations folder.
-export async function runMigrations(): Promise<void> {
-  await migrate(db, { migrationsFolder: "infra/database/migrations" });
-}
-
 ```
 
 </BestPractice>
@@ -281,14 +431,18 @@ import * as S from "@effect/schema/Schema";
 
 const EnvSchema = S.Struct({
   DATABASE_URL: S.NonEmptyString,
-  DB_MAX_CONNECTIONS: S.NumberFromString.pipe(S.greaterThanOrEqualTo(1)),
+  DB_MAX_CONNECTIONS: S.NumberFromString.pipe(
+    S.greaterThanOrEqualTo(1),
+  ),
   NODE_ENV: S.Literal("development", "test", "production"),
 });
 
 export type AppConfig = S.Schema.Type<typeof EnvSchema>;
 
 export const config: AppConfig = parseEnv(EnvSchema, process.env);
+```
 
+```typescript !example
 // File: infra/config/index.ts
 export { config } from "./env.config";
 

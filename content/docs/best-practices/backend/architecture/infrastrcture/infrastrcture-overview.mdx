@@ -30,7 +30,8 @@ export const hosts = pgTable("hosts", {
 ```
 
 ## !!steps Introduce Shared Columns Utility
-Now we’ll pull common pieces (UUIDs and timestamps) into a tiny helper so every table stays consistent.
+Almost every table needs create/updatetimestamps and unique IDs. Instead of copying the same code everywhere, we'll create a reusable "blueprint" (sharedColumns). 
+This keeps our data consistent and our code clean!
 
 ```typescript !
 import { timestamp, uuid } from "drizzle-orm/pg-core";
@@ -46,7 +47,9 @@ export const SharedColumns = {
 ```
 
 ## !!steps Apply Shared Columns and FK
-With that helper in place, let’s refactor the model to use it and hook up the `userId` foreign key.
+Now we plug our helper into the hosts table.
+We spread ...SharedColumns to get id, createdAt, and updatedAt, and then add a `userId` column that references the users table.
+This step shows how to reuse shared columns and wire up a foreign key (userId) in Drizzle.
 
 ```typescript !
 // !collapse(1:10) collapsed
@@ -75,7 +78,8 @@ export const hosts = pgTable("hosts", {
 ```
 
 ## !!steps Finalize Model: Address and Social Links
-Time to grow the table to match the domain: we’ll add optional fields, address details, and social links.
+The real domain isn’t just an ID and email – hosts have profile data.
+Here we expand the hosts table with optional details: date of birth, phone number, address fields, and social links.
 
 ```typescript !
 // !collapse(1:12) collapsed
@@ -128,7 +132,8 @@ export type NewHostModel = typeof hosts.$inferInsert;
 ```
 
 ## !!steps Repository: Skeleton and Serialization
-Now for the repository. We’ll tuck the model away above and focus on one simple idea first: flatten nested domain objects with `toDbSerialized` before writing to the DB.
+With the table done, we switch to the repository.
+The key idea: before writing a domain entity to the database, we call `toDbSerialized` to flatten any nested value objects into simple columns.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -281,7 +286,7 @@ export class HostDrizzleRepository extends HostRepository {
   }
 
   // !mark(1:13) #22c55e
-  update(host: Host): RepositoryEffect<Host, HostUpdateError> {
+  update(host: Host): RepositoryEffect<Host, HostUpdateError | HostNotFoundError> {
     return pipe(
       this.ensureExists(host.id),
       E.flatMap(() => this.toDbSerialized(host)),
@@ -328,7 +333,7 @@ export class HostDrizzleRepository extends HostRepository {
  
 
 ## !!steps Fetch: By User ID
-A small read operation by `userId`, returning an `Option` when nothing is found.
+We call a reusable helper `fetchSingle` that runs the query, maps the row to a Host entity, and returns an Option.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -485,7 +490,7 @@ export class HostDrizzleRepository extends HostRepository {
  
 
 ## !!steps Fetch: By Phone Number
-Fetch many by phone number. This shows how we reuse our list-fetch helper.
+Fetch many by phone number. We call a reusable helper `fetchMultiple` that runs the query, maps the rows to Host entities, and returns a list.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -636,7 +641,8 @@ export class HostDrizzleRepository extends HostRepository {
  
 
 ## !!steps Fetch: Complete Profiles
-Let’s build a filtered, paginated query. “Complete profiles” have all the fields we care about.
+Not every host has a fully filled profile.
+This step builds a query that returns only “complete profiles” and applies pagination. 
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -846,7 +852,8 @@ export class HostDrizzleRepository extends HostRepository {
 ```
 
 ## !!steps Fetch: Flexible Query
-A flexible search: combine text search, filters, and pagination in one place.
+Here we combine text search, filters, and pagination into one flexible search function.
+The repository builds a dynamic query, executes it, and returns a paginated list of Host entities.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -1169,7 +1176,7 @@ export class HostDrizzleRepository extends HostRepository {
   }
 
   // !mark(1:12) #22c55e
-  remove(hostId: UUID): RepositoryEffect<boolean, HostDeleteError> {
+  remove(hostId: UUID): RepositoryEffect<boolean, HostDeleteError | HostNotFoundError> {
     return pipe(
       this.ensureExists(hostId),
       E.flatMap(() =>
