@@ -3,6 +3,7 @@
   "defaultOpen": true,
   "pages": [
     "infrastrcture-overview",
-    "infrastrcture-tests"
+    "infrastrcture-tests",
+    "infrastructure-best-practices"
   ]
 }
