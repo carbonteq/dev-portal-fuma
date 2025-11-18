@@ -83,9 +83,9 @@ export const documentTable = pgTable("documents", {
 
 ---
 
-## Serialization & Flattening Patterns
+## Serialization & Flattening Patterns for nested objects
 
-<BestPractice title="Serialization & Flattening Patterns">
+<BestPractice title="Serialization & Flattening Patterns for nested objects">
 
 Use schema-driven serialization to flatten nested domain objects into DB-friendly rows and to reconstruct entities from rows.
 
@@ -388,73 +388,3 @@ export class HostDrizzleRepository {
 
 </BestPractice>
 
----
-
-## Configuration & Environment Access Patterns
-
-<BestPractice title="Configuration & Environment Access Patterns">
-
-Centralize configuration in the infra layer and expose a typed config object instead of reading `process.env` everywhere.
-
-## !dont scattered-env-access
-
-**Read `process.env` directly across repositories and services.** This causes:
-
-* Hidden configuration dependencies
-* Runtime failures due to missing variables
-* Inconsistent parsing and defaulting rules
-
-```typescript !example
-// ❌ Bad: Direct env access in repository
-export class UserRepositoryImpl {
-  private readonly db = new Pool({
-    connectionString: process.env.DATABASE_URL, // Unvalidated, untyped
-  });
-}
-
-// ❌ Bad: Different defaults in different files
-const timeout = Number(process.env.DB_TIMEOUT_MS ?? "5000");
-const timeout2 = Number(process.env.DB_TIMEOUT_MS ?? "3000");
-```
-
-## !do central-config-object
-
-**Use a validated, typed config object from `infra/config`.** This provides:
-
-* **Single source of truth** for configuration
-* **Early validation** of required variables at startup
-* **Explicit dependencies** in infra components
-
-```typescript !example
-// File: infra/config/env.config.ts
-import * as S from "@effect/schema/Schema";
-
-const EnvSchema = S.Struct({
-  DATABASE_URL: S.NonEmptyString,
-  DB_MAX_CONNECTIONS: S.NumberFromString.pipe(
-    S.greaterThanOrEqualTo(1),
-  ),
-  NODE_ENV: S.Literal("development", "test", "production"),
-});
-
-export type AppConfig = S.Schema.Type<typeof EnvSchema>;
-
-export const config: AppConfig = parseEnv(EnvSchema, process.env);
-```
-
-```typescript !example
-// File: infra/config/index.ts
-export { config } from "./env.config";
-
-// File: infra/repositories/user.repository.impl.ts
-import { config } from "@infra/config";
-
-export class UserRepositoryImpl {
-  private readonly db = new Pool({
-    connectionString: config.DATABASE_URL,
-    max: config.DB_MAX_CONNECTIONS,
-  });
-}
-```
-
-</BestPractice>

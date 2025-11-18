@@ -14,7 +14,8 @@ import { Layers, Database, Table, Settings, Cloud } from "lucide-react";
 <ScrollyCoding>
 
 ## !!steps Start with a Minimal Host Model
-Let’s start small. We’ll set up a tiny `hosts` table with just the basics, then improve it as we go.
+- Begin with a tiny `hosts` table containing only the most essential columns.
+- Keep it simple first, then evolve the model as needs grow.
 
 ```typescript !
 import { pgTable, text, uuid } from "drizzle-orm/pg-core";
@@ -30,8 +31,9 @@ export const hosts = pgTable("hosts", {
 ```
 
 ## !!steps Introduce Shared Columns Utility
-Almost every table needs create/updatetimestamps and unique IDs. Instead of copying the same code everywhere, we'll create a reusable "blueprint" (sharedColumns). 
-This keeps our data consistent and our code clean!
+Almost every table needs create/updatetimestamps and unique IDs. 
+- Instead of copying the same code everywhere, we'll create a reusable "blueprint" (`sharedColumns`). 
+- This keeps our data consistent and our code clean!
 
 ```typescript !
 import { timestamp, uuid } from "drizzle-orm/pg-core";
@@ -48,8 +50,8 @@ export const SharedColumns = {
 
 ## !!steps Apply Shared Columns and FK
 Now we plug our helper into the hosts table.
-We spread ...SharedColumns to get id, createdAt, and updatedAt, and then add a `userId` column that references the users table.
-This step shows how to reuse shared columns and wire up a foreign key (userId) in Drizzle.
+- We spread `...SharedColumns` to get `id`, `createdAt`, and `updatedAt` , and then add a `userId` column that references the users table.
+- This step shows how to reuse shared columns and wire up a foreign key (userId) in Drizzle.
 
 ```typescript !
 // !collapse(1:10) collapsed
@@ -79,7 +81,7 @@ export const hosts = pgTable("hosts", {
 
 ## !!steps Finalize Model: Address and Social Links
 The real domain isn’t just an ID and email – hosts have profile data.
-Here we expand the hosts table with optional details: date of birth, phone number, address fields, and social links.
+- Here we expand the hosts table with optional details: date of birth, phone number, address fields, and social links.
 
 ```typescript !
 // !collapse(1:12) collapsed
@@ -133,7 +135,7 @@ export type NewHostModel = typeof hosts.$inferInsert;
 
 ## !!steps Repository: Skeleton and Serialization
 With the table done, we switch to the repository.
-The key idea: before writing a domain entity to the database, we call `toDbSerialized` to flatten any nested value objects into simple columns.
+- The key idea: before writing a domain entity to the database, we call `toDbSerialized` to flatten any nested value objects into simple columns.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -175,7 +177,8 @@ export class HostDrizzleRepository extends HostRepository {
 ```
 
 ## !!steps Add: Insert Method (add)
-Let’s add the first write method. `add` serializes the entity and inserts it, with clear Effect-based error handling.
+Let’s add the first write method.
+- `add` serializes the entity and inserts it into the database, with clear Effect-based error handling.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -231,7 +234,8 @@ export class HostDrizzleRepository extends HostRepository {
 ```
 
 ## !!steps Add: Update Method
-Next up, `update`. We make sure the record exists, serialize it, and persist the changes.
+Next up, let's add the `update` method.
+- We make sure the record exists, serialize the new data, and persist the changes.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -333,7 +337,8 @@ export class HostDrizzleRepository extends HostRepository {
  
 
 ## !!steps Fetch: By User ID
-We call a reusable helper `fetchSingle` that runs the query, maps the row to a Host entity, and returns an Option.
+Fetch one host by user id.
+- We call a reusable helper `fetchSingle` that runs the query, maps the row to a Host entity, and returns an Option.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -490,7 +495,8 @@ export class HostDrizzleRepository extends HostRepository {
  
 
 ## !!steps Fetch: By Phone Number
-Fetch many by phone number. We call a reusable helper `fetchMultiple` that runs the query, maps the rows to Host entities, and returns a list.
+Fetch many hosts by phone number. 
+- We call a reusable helper `fetchMultiple` that runs the query, maps the rows to Host entities, and returns a list.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -642,7 +648,7 @@ export class HostDrizzleRepository extends HostRepository {
 
 ## !!steps Fetch: Complete Profiles
 Not every host has a fully filled profile.
-This step builds a query that returns only “complete profiles” and applies pagination. 
+- This step builds a query that returns only “complete profiles” and applies pagination. 
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -853,7 +859,7 @@ export class HostDrizzleRepository extends HostRepository {
 
 ## !!steps Fetch: Flexible Query
 Here we combine text search, filters, and pagination into one flexible search function.
-The repository builds a dynamic query, executes it, and returns a paginated list of Host entities.
+- The repository builds a dynamic query, executes it, and returns a paginated list of Host entities.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -1015,7 +1021,7 @@ export class HostDrizzleRepository extends HostRepository {
 ```
 
 ## !!steps Remove: Delete by ID
-Finally, delete by id: check it exists, then remove it.
+Finally, delete a host by id: check if it exists, then remove it.
 
 ```typescript !
 // !collapse(1:17) collapsed
