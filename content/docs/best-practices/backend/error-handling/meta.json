@@ -1,0 +1,8 @@
+{
+  "title": "Error Handling",
+  "defaultOpen": true,
+  "pages": [
+    "Error Handling - Monads vs Try-Catch",
+    "Error Handling Architecture - MVC"
+  ]
+} 

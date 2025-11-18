@@ -6,6 +6,8 @@
     "principles", 
     "branded-types",
     "primitive-obsession",
+    "data-on-boundries",
+    "error-handling",
     "architecture",
     "stack_tooling",
     "..."

@@ -1,0 +1,523 @@
+---
+title: "Type Boundaries: Client, Domain & DB"
+description: "How strings, UUIDs, null/undefined, Option<T>, DateTimeFromAny, and structured data flow across client, domain, and database boundaries — using Host as a concrete example."
+---
+
+import { ScrollyCoding } from "@/components/ui/ScrollyCoding";
+import { File, Folder, Files } from "fumadocs-ui/components/files";
+import { BiLogoTypescript } from "react-icons/bi";
+import { Layers, Database, Settings } from "lucide-react";
+
+# Type Boundaries: Client ⇄ Domain ⇄ DB
+
+Data does not arrive from the outside world in the exact shape our domain wants it.
+
+Clients send JSON with:
+- IDs as plain `string`
+- optional fields as `T | null | undefined`
+- datetimes as string, number, or Date
+
+Domain wants:
+- `UUID` refined type instead of free-form string
+- `Option<T>` instead of `null` or `undefined`
+- consistent date handling via `Date`
+
+DB stores:
+- primitive columns (`uuid`, `text`, `timestamp`)
+- flat fields
+- no domain concepts like Option or UUID branding
+
+This document focuses on how types change across boundaries (client → domain → DB).
+
+<ScrollyCoding>
+
+## !!steps Step 1 — Problem: Outside Types vs Inside Types
+
+Clients are messy. They send data in a way that is not always compatible with the domain.
+
+```typescript !
+// Client-facing shape (API DTO)
+type HostRequestDTO = {
+  id: string;
+  userId: string;
+// !callout[/createdAt: string \| number \| Date;/] #22c55e Client may send createdAt, updatedAt, dob, phoneNumber, or profileImage in different shapes (string, number, Date, null or missing)
+  createdAt: string | number | Date;
+  updatedAt: string | number | Date;
+
+  dob?: string | number | Date | null;
+  phoneNumber?: number | null;
+  profileImage?: string | null;
+
+  address?: unknown;
+  socialLinks?: unknown;
+};
+
+// Domain expectation: stronger types and monads
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Option as O } from "effect";
+
+interface IHost extends IEntity {
+  userId: UUID;
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
+}
+```
+
+Domain expects data in a way that is compatible with the domain:
+
+Inside the domain:
+- ID becomes `UUID` (branded type)
+- optional values become `Option<T>`
+- datetimes become canonical `Date` objects
+
+
+
+## !!steps Step 2 — UUID and Date as Internal Types
+
+At the boundary, we transform raw external values and produce internal refined types.
+
+```typescript !
+import * as S from "@effect/schema/Schema";
+import { Brand } from "effect/Brand";
+
+export type UUID = Brand<string, "UUID">;
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export const StringToUUID = S.transform(
+  S.String,
+  (value): UUID => {
+    if (!UUID_REGEX.test(value)) {
+      throw new Error(`Invalid UUID: ${value}`);
+    }
+    return value as UUID;
+  },
+  (uuid: UUID): string => uuid
+);
+```
+
+`DateTimeFromAny` is a helper function that converts different date formats into a canonical `Date` object.
+
+- It normalizes different date formats like:
+ - ISO strings
+ - timestamps
+ - Date instances
+
+ into a canonical `Date` object
+
+```typescript !
+import * as S from "@effect/schema/Schema";
+
+const DateInput = S.Union(S.String, S.Number, S.Date);
+
+export const DateTimeFromAny = S.transform(
+  DateInput,
+  (value): Date => {
+    if (value instanceof Date) return value;
+
+    if (typeof value === "number") {
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) throw new Error(`Invalid timestamp: ${value}`);
+      return d;
+    }
+
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) throw new Error(`Invalid date string: ${value}`);
+    return d;
+  },
+  (date: Date): string => date.toISOString()
+);
+```
+
+The boundary handling principle is:
+- Outside: loose and messy
+- Inside: strict and normalized
+
+
+
+## !!steps Step 3 — Client Boundary Using HostSchema
+
+We now define how to decode client input into strict domain-ready structures.
+
+```typescript !
+import * as S from "@effect/schema/Schema";
+import { StringToUUID } from "@domain/utils/refined.types";
+import { DateTimeFromAny } from "@domain/utils/date.types";
+
+export const HostSchema = S.Struct({
+  id: StringToUUID,
+  createdAt: DateTimeFromAny,
+  updatedAt: DateTimeFromAny,
+
+  userId: StringToUUID,
+  dob: S.optional(DateTimeFromAny),
+  phoneNumber: S.optional(S.Number),
+  profileImage: S.optional(S.String),
+
+  address: S.optional(S.Any),
+  socialLinks: S.optional(S.Any)
+});
+
+export type HostType = S.Schema.Type<typeof HostSchema>;
+export type HostSerialized = S.Schema.Encoded<typeof HostSchema>;
+```
+
+Domain will later wrap optional values into `Option<T>`, but the schema ensures correct parsing and coercion.
+
+
+
+## !!steps Step 4 — Normalizing Optional Values with `Maybe<T>`
+
+External data may be:
+
+* T
+* null
+* undefined
+* `Option<T>`
+
+So we unify that via `Maybe<T>`.
+
+```typescript !
+import { Option as O } from "effect";
+
+export type Maybe<T> = T | null | undefined | O.Option<T>;
+
+export function normalizeMaybe<T>(value: Maybe<T>): O.Option<T> {
+  if (O.isOption(value)) return value;
+  if (value === null || value === undefined) return O.none();
+  return O.some(value);
+}
+
+export function optionToMaybe<T>(value: O.Option<T>): T | null {
+  return O.getOrNull(value);
+}
+```
+
+Serialized version of Host used at boundaries:
+
+```typescript !
+export type SerializedHost = {
+  id: string;
+  createdAt: string | number | Date;
+  updatedAt: string | number | Date;
+
+  userId: string;
+  dob: Maybe<Date>;
+  phoneNumber: Maybe<number>;
+  profileImage: Maybe<string>;
+
+  address?: unknown;
+  socialLinks?: unknown;
+};
+
+
+## !!steps Step 5 — Domain Entity Using SerializedHost
+
+The domain entity now expresses:
+
+- IDs as `UUID`
+- optional fields as `Option<T>`
+- datetimes as `Date`
+
+<ScrollyCoding>
+```typescript !
+
+import { BaseEntity, IEntity } from "@domain/utils/base.entity";
+import { UUID } from "@domain/utils/refined.types";
+import { Option as O } from "effect";
+import { Maybe, normalizeMaybe } from "@domain/utils/maybe";
+
+interface IHost extends IEntity {
+  userId: UUID;
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
+}
+
+// Domain entity focused on type changes
+export class Host extends BaseEntity implements IHost {
+  userId: UUID;
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
+
+  constructor(data: SerializedHost) {
+    super();
+
+    this._fromSerialized({
+      id: data.id,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt
+    });
+
+    this.userId = data.userId as UUID;
+    this.dob = normalizeMaybe(data.dob);
+    this.phoneNumber = normalizeMaybe(data.phoneNumber);
+    this.profileImage = normalizeMaybe(data.profileImage);
+  }
+
+  get hasCompleteProfile(): boolean {
+    return (
+      O.isSome(this.dob) &&
+      O.isSome(this.phoneNumber) &&
+      O.isSome(this.profileImage)
+    );
+  }
+}
+
+```
+
+The domain constructor is the place where:
+
+* the base entity info is restored,
+* `string` IDs become `UUID`,
+* `Maybe<T>` becomes `Option<T>`.
+
+
+
+## !!steps Step 6 — Factory: Host.create with Validation
+
+Factory methods are a good place to:
+
+* normalize
+* validate
+* then construct
+
+```typescript !
+import { HostValidationError, HostGuards } from "./host.error";
+
+export class Host extends BaseEntity implements IHost {
+  // properties and constructor from previous step
+
+  static create(serialized: SerializedHost): Host {
+    const normalizedDob = normalizeMaybe(serialized.dob);
+    const normalizedPhone = normalizeMaybe(serialized.phoneNumber);
+    const normalizedImage = normalizeMaybe(serialized.profileImage);
+
+    if (!HostGuards.validateDateOfBirth(normalizedDob)) {
+      throw new HostValidationError("Invalid date of birth");
+    }
+
+    if (!HostGuards.validatePhoneNumber(normalizedPhone)) {
+      throw new HostValidationError("Invalid phone number");
+    }
+
+    return new Host({
+      ...serialized,
+      dob: normalizedDob,
+      phoneNumber: normalizedPhone,
+      profileImage: normalizedImage
+    });
+  }
+}
+```
+
+`Host.create` is the safe, public entry point for building domain entities from serialized data.
+
+
+
+## !!steps Step 7 — Domain → Outside: serialize with `Option<T>` and `Date`
+
+Now we add `serialize` to send data back out of the domain (towards client or DB).
+
+```typescript !
+import { optionToMaybe } from "@domain/utils/maybe";
+
+export class Host extends BaseEntity implements IHost {
+  // properties, constructor, create
+
+  serialize(): SerializedHost {
+    return {
+      ...this._serialize(),
+      userId: this.userId,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      dob: optionToMaybe(this.dob),
+      phoneNumber: optionToMaybe(this.phoneNumber),
+      profileImage: optionToMaybe(this.profileImage)
+    };
+  }
+}
+```
+
+Notes:
+
+* dates stay as `Date` (or can be converted to ISO elsewhere using `DateTimeFromAny` encode side),
+* options become `T | null` again via `optionToMaybe`.
+
+
+
+## !!steps Step 8 — DB Boundary: Rows ↔ SerializedHost ↔ Host
+
+On the database side, we work with flat row types. A mapping layer connects DB rows and the domain.
+
+```typescript !
+import { Host } from "@domain/entities/user/host.entity";
+import type { SerializedHost } from "@domain/entities/user/host.entity";
+
+type HostRow = {
+  id: string;
+  created_at: Date;
+  updated_at: Date;
+  user_id: string;
+  dob: Date | null;
+  phone_number: number | null;
+  profile_image: string | null;
+};
+
+// DB row -> SerializedHost -> Host
+export function mapRowToHost(row: HostRow): Host {
+  const serialized: SerializedHost = {
+    id: row.id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    userId: row.user_id,
+    dob: row.dob,
+    phoneNumber: row.phone_number,
+    profileImage: row.profile_image
+  };
+
+  return Host.create(serialized);
+}
+```
+
+Here, datetimes:
+
+* come from DB as `Date`,
+* go into `SerializedHost`,
+* are normalized at the boundary using `Host.create` and `DateTimeFromAny` in the schema when you decode external data.
+
+
+
+</ScrollyCoding>
+```
+
+### Key Lessons
+
+1. Boundary types are not domain types  
+   Outside the domain, data is usually strings, numbers, nulls, and loosely structured objects.  
+   Inside the domain, data is refined (`UUID`), normalized (`Date`), and made explicit (`Option<T>`).
+
+2. Schemas enforce boundary rules  
+   StringToUUID and DateTimeFromAny provide strict decoding at the boundary and deterministic encoding 
+   when leaving the domain.
+
+3. Option<T> is the canonical representation for optional values inside the domain  
+   normalizeMaybe accepts any messy external representation (`null`, `undefined`, `Option`, raw) and produces 
+   a clean `Option<T>`.
+
+4. Maybe<T> keeps boundary types flexible  
+   Instead of repeating `T | null | undefined` everywhere, `Maybe<T>` allows external values to be permissive while
+   preserving strictness internally.
+
+5. Domain and boundary concerns are separate  
+   The `Host` entity handles domain invariants and exposes a `serialize()` method to produce a consistent outward 
+   shape. Boundary schemas handle parsing, and transformation.
+ 
+## You might notice at domain level that address and socialLinks look different from the rest of the fields. 
+They are differently handled than the other fields because they are value objects and are constructed independently.
+
+ ## !!steps Aside: Why address and socialLinks Look Different in the Domain
+That difference comes from a domain modeling choice.
+
+### They could have just been fields
+
+There is no technical limitation that forces `country: string; city: string; zipCode: string;` to become a 
+value object. You could define `IHost` like this:
+
+```typescript
+interface IHost extends IEntity {
+  userId: UUID;
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
+
+  country: string;
+  city: string;
+  zipCode: string;
+}
+```
+
+### But in your actual implementation, they are value objects
+
+You intentionally modeled them as:
+
+```typescript
+address: Address;
+socialLinks: SocialLinks;
+```
+
+because that reflects domain concepts:
+
+* multiple primitives represent one conceptual thing
+  (country, city, state, zipCode → address)
+* those concepts may have their own validation
+  (zip code format, URL validity)
+* they may need their own serialization logic
+  (address.serialize())
+
+### Why they behave differently
+
+Because they are **constructed independently**, not spread like primitives.
+
+In your domain constructor:
+
+```typescript !
+constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
+  super();
+  this._fromSerialized({
+    id: data.id,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt
+  });
+
+  this.userId = data.userId as UUID;
+  this.dob = normalizeMaybe(data.dob);
+  this.phoneNumber = normalizeMaybe(data.phoneNumber);
+  this.profileImage = normalizeMaybe(data.profileImage);
+
+  this.address = address;         // value object
+  this.socialLinks = socialLinks; // value object
+}
+```
+
+And when leaving the domain:
+
+```typescript !
+serialize(): SerializedHost {
+  return {
+    ...this._serialize(),
+    userId: this.userId,
+    dob: optionToMaybe(this.dob),
+    phoneNumber: optionToMaybe(this.phoneNumber),
+    profileImage: optionToMaybe(this.profileImage),
+    address: this.address.serialize(),
+    socialLinks: this.socialLinks.serialize()
+  };
+}
+```
+
+So the difference in syntax:
+
+* separate constructor arguments
+* separate serialization calls
+* not part of the spread operator
+
+comes from the decision that `address` and `socialLinks` are *domain-level value objects*.
+
+### This is independent from type boundary concerns
+
+Type boundaries explain:
+outside → inside → outside changes (UUID, Date, Option, Maybe)
+
+Value object design explains:
+why some fields behave differently in the domain despite coming from the same external shape.
+
+They are separate ideas.
+
+---
+
+
