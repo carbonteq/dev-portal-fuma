@@ -271,18 +271,23 @@ Why this conversion? The domain entity (`Host`) uses strict types internally. Th
 - Restores base fields (id, createdAt, updatedAt) from `BaseEntity`
 - Casts validated string IDs → `UUID` (safe because validation already happened at schema boundary)
 - Normalizes `Maybe<T>` → `Option<T>` using the `normalizeMaybe` helper
+- Accepts already-constructed value objects (address, socialLinks)
 
 ```typescript !
 import { BaseEntity, IEntity } from "@domain/utils/base.entity";
 import { UUID } from "@domain/utils/refined.types";
 import { Option as O } from "effect";
 import { Maybe, normalizeMaybe } from "@domain/utils/maybe";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
 
 interface IHost extends IEntity {
   userId: UUID;
   dob: O.Option<Date>;
   phoneNumber: O.Option<number>;
   profileImage: O.Option<string>;
+  address: Address;
+  socialLinks: SocialLinks;
 }
 
 export class Host extends BaseEntity implements IHost {
@@ -290,8 +295,10 @@ export class Host extends BaseEntity implements IHost {
   dob: O.Option<Date>;
   phoneNumber: O.Option<number>;
   profileImage: O.Option<string>;
+  address: Address;
+  socialLinks: SocialLinks;
 
-  constructor(data: SerializedHost) {
+  constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
     super();
 
     this._fromSerialized({
@@ -304,6 +311,8 @@ export class Host extends BaseEntity implements IHost {
     this.dob = normalizeMaybe(data.dob);
     this.phoneNumber = normalizeMaybe(data.phoneNumber);
     this.profileImage = normalizeMaybe(data.profileImage);
+    this.address = address;
+    this.socialLinks = socialLinks;
   }
 
   get hasCompleteProfile(): boolean {
@@ -331,6 +340,8 @@ Why a factory? The constructor handles type transformations (already normalizes 
 
 ```typescript !
 import { HostValidationError, HostGuards } from "./host.error";
+import { Address } from "./address.vo";
+import { SocialLinks } from "./socialLinks.vo";
 
 export class Host extends BaseEntity implements IHost {
   // properties and constructor from previous step
@@ -345,15 +356,19 @@ export class Host extends BaseEntity implements IHost {
       throw new HostValidationError("Invalid phone number");
     }
 
+    // Create value objects from boundary data
+    const address = Address.create(serialized.address);
+    const socialLinks = SocialLinks.create(serialized.socialLinks);
+
     // Constructor handles normalization (Maybe<T> → Option<T>)
-    return new Host(serialized);
+    return new Host(serialized, address, socialLinks);
   }
 }
 ```
 
 Separation of concerns:
 - Boundary layer (schemas): Type validation and transformation (string → UUID, various formats → Date)
-- Factory (`Host.create`): Business rule validation (valid DOB range, phone format)
+- Factory (`Host.create`): Business rule validation (valid DOB range, phone format) + value object creation
 - Constructor: Type normalization (`Maybe<T>` → `Option<T>`)
 
 
@@ -364,6 +379,7 @@ Why serialize? The domain uses strict internal types (`UUID`, `Option<T>`, `Date
 - Plain strings (not branded UUIDs)
 - `null` for missing values (not `Option.none()`)
 - Serializable date formats
+- Plain objects (not value object instances)
 
 The `serialize()` method converts domain types back to boundary-compatible types:
 
@@ -381,7 +397,9 @@ export class Host extends BaseEntity implements IHost {
       updatedAt: this.updatedAt,
       dob: optionToMaybe(this.dob),
       phoneNumber: optionToMaybe(this.phoneNumber),
-      profileImage: optionToMaybe(this.profileImage)
+      profileImage: optionToMaybe(this.profileImage),
+      address: this.address.serialize(),
+      socialLinks: this.socialLinks.serialize()
     };
   }
 }
@@ -391,6 +409,7 @@ Boundary transformation (reverse):
 - `UUID` → plain `string` (unwrapped from branded type)
 - `Option<T>` → `T | null` (via `optionToMaybe` helper)
 - `Date` → stays as `Date` (schema's encode can convert to ISO string if needed)
+- Value objects → plain objects (via their own `serialize()` methods)
 
 
 
@@ -399,6 +418,7 @@ Boundary transformation (reverse):
 Why another boundary? The database has its own types:
 - Primitive types only (no `Option<T>`, no branded types)
 - `null` for missing values
+- Plain JSON for nested structures
 
 ```typescript !
 import { Host } from "@domain/entities/user/host.entity";
@@ -412,6 +432,8 @@ type HostRow = {
   dob: Date | null;
   phone_number: number | null;
   profile_image: string | null;
+  address: unknown;      // JSON column or joined data
+  social_links: unknown; // JSON column or joined data
 };
 
 // DB row -> SerializedHost -> Host
@@ -423,14 +445,16 @@ export function mapRowToHost(row: HostRow): Host {
     userId: row.user_id,
     dob: row.dob,
     phoneNumber: row.phone_number,
-    profileImage: row.profile_image
+    profileImage: row.profile_image,
+    address: row.address,
+    socialLinks: row.social_links
   };
 
   return Host.create(serialized);  // Validation + transformation happens here
 }
 ```
 
-Flow: DB Row (`primitives`, `null`) → SerializedHost (`Maybe<T>`) → Host (`UUID`, `Option<T>`, `Date`)
+Flow: DB Row (`primitives`, `null`, `JSON`) → SerializedHost (`Maybe<T>`) → Host (`UUID`, `Option<T>`, `Date`, `ValueObjects`)
 
 The same boundary utilities (`normalizeMaybe`, `StringToUUID`, `DateTimeFromAny`) work for both client and database boundaries.
 
@@ -459,43 +483,18 @@ The same boundary utilities (`normalizeMaybe`, `StringToUUID`, `DateTimeFromAny`
 
 
 
-## Aside: Why address and socialLinks Look Different in the Domain
+---
 
-This document focuses on type boundaries (string ↔ UUID, loose date ↔ `Date`, `T | null | undefined` ↔ `Option<T>`).
+## Side Topic: 
+## Note on Value Objects (Address and SocialLinks in Domain overview)
 
-The reason `address` and `socialLinks` look different in your domain code is a *domain modeling* choice, not a boundary requirement.
+Throughout this document and the Domain Overview document, you may have noticed that `address` and `socialLinks` are handled differently from scalar fields like `dob` or `phoneNumber`. This is a **domain modeling choice**, not a boundary concern.
 
-They could have been primitives:
+### The Pattern You've Seen
 
-```typescript
-interface IHost extends IEntity {
-  userId: UUID;
-  dob: O.Option<Date>;
-  phoneNumber: O.Option<number>;
-  profileImage: O.Option<string>;
-
-  country: string;
-  city: string;
-  zipCode: string;
-}
-```
-
-Instead, you chose:
+In the constructor:
 
 ```typescript
-address: Address;
-socialLinks: SocialLinks;
-```
-
-because:
-
-* multiple primitives represent one conceptual thing (country, city, state, zipCode → address)
-* they have their own validation rules
-* they have their own serialization logic
-
-So in the constructor:
-
-```typescript !
 constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
   super();
   this._fromSerialized({
@@ -504,19 +503,21 @@ constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
     updatedAt: data.updatedAt
   });
 
+  // Scalar fields use boundary utilities
   this.userId = data.userId as UUID;
   this.dob = normalizeMaybe(data.dob);
   this.phoneNumber = normalizeMaybe(data.phoneNumber);
   this.profileImage = normalizeMaybe(data.profileImage);
 
+  // Value objects passed directly
   this.address = address;
   this.socialLinks = socialLinks;
 }
 ```
 
-And when leaving the domain:
+And when serializing:
 
-```typescript !
+```typescript
 serialize(): SerializedHost {
   return {
     ...this._serialize(),
@@ -524,12 +525,154 @@ serialize(): SerializedHost {
     dob: optionToMaybe(this.dob),
     phoneNumber: optionToMaybe(this.phoneNumber),
     profileImage: optionToMaybe(this.profileImage),
+    
+    // Value objects serialize themselves
     address: this.address.serialize(),
     socialLinks: this.socialLinks.serialize()
   };
 }
 ```
 
-They behave differently because they are value objects, constructed and serialized independently, not just more primitive fields to spread.
+### Why This Difference?
 
-This is separate from the type-boundary concerns, but it explains why their syntax and handling in the domain differ from scalar fields like `dob` or `phoneNumber`.
+**Value Objects** are used when multiple primitives represent one cohesive concept:
+
+#### Address Could Have Been Primitives:
+
+```typescript
+interface IHost extends IEntity {
+  userId: UUID;
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
+  
+  // Scattered primitives
+  country: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  street: string;
+}
+```
+
+**Problems:**
+- Primitive obsession: Five separate fields for one concept
+- Scattered validation: Address rules mixed with Host validation
+- Hard to reuse: Other entities duplicate these fields
+- No encapsulation: Can't enforce country-specific rules (US addresses need state, UK addresses don't)
+
+#### Instead, Extract a Value Object:
+
+```typescript
+interface IHost extends IEntity {
+  userId: UUID;
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
+  
+  // Cohesive value object
+  address: Address;
+  socialLinks: SocialLinks;
+}
+```
+
+**Benefits:**
+- **Conceptual integrity**: All address fields stay together
+- **Encapsulated validation**: Address validates itself
+- **Reusability**: User, Organization all reuse Address
+- **Type safety**: Can't pass individual strings where Address expected
+
+
+### Value Object Implementation
+
+A value object follows the same boundary patterns as entities:
+
+```typescript
+// address.vo.ts
+export const AddressSchema = S.Struct({
+  country: S.String,
+  city: S.String,
+  state: S.optional(S.String),
+  zipCode: S.String,
+  street: S.optional(S.String)
+});
+
+export type AddressType = S.Schema.Type<typeof AddressSchema>;
+export type SerializedAddress = S.Schema.Encoded<typeof AddressSchema>;
+
+export class Address {
+  readonly country: string;
+  readonly city: string;
+  readonly state: O.Option<string>;
+  readonly zipCode: string;
+  readonly street: O.Option<string>;
+
+  private constructor(data: AddressType) {
+    this.country = data.country;
+    this.city = data.city;
+    this.state = data.state;
+    this.zipCode = data.zipCode;
+    this.street = data.street;
+  }
+
+  static create(input: SerializedAddress): E.Effect<Address, AddressError, never> {
+    return pipe(
+      S.decodeUnknown(AddressSchema)(input),
+      E.flatMap((data) => {
+        // Address-specific validation
+        if (!AddressGuards.isValidZipCode(data.country, data.zipCode)) {
+          return E.fail(new AddressValidationError("Invalid zip code"));
+        }
+        return E.succeed(new Address(data));
+      })
+    );
+  }
+
+  serialize(): SerializedAddress {
+    return {
+      country: this.country,
+      city: this.city,
+      state: optionToMaybe(this.state),
+      zipCode: this.zipCode,
+      street: optionToMaybe(this.street)
+    };
+  }
+}
+```
+
+### Integration with Host
+
+Value objects are created independently in the factory method:
+
+```typescript
+static create(input: SerializedHost): E.Effect<Host, HostError, never> {
+  return pipe(
+    S.decodeUnknown(HostSchema)(input),
+    E.flatMap((data) => {
+      // Create value objects with their own validation
+      return E.all([
+        Address.create(input.address),
+        SocialLinks.create(input.socialLinks)
+      ]).pipe(
+        E.map(([address, socialLinks]) => 
+          new Host(data, address, socialLinks))
+      );
+    })
+  );
+}
+```
+
+### Decision Guide
+
+**Use primitives when:**
+- Single atomic concept (phoneNumber, age, email)
+- No related fields to validate together
+
+**Use value objects when:**
+- Multiple primitives form one concept (Address)
+- Has its own validation rules
+- Will be reused across entities
+
+---
+
+
