@@ -36,7 +36,7 @@ export const documentTable = pgTable("documents", {
   updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(), // duplicated
   title: varchar("title", { length: 255 }),
 });
-````
+```
 
 ## !do shared-columns-utility
 
@@ -63,6 +63,7 @@ export const SharedColumns = {
 
 ```typescript !example
 // File: infra/database/tables/user.table.ts
+import { pgTable, varchar } from "drizzle-orm/pg-core";
 import { SharedColumns } from "@infra/database/utils/shared-cols";
 
 export const userTable = pgTable("users", {
@@ -71,6 +72,7 @@ export const userTable = pgTable("users", {
 });
 
 // File: infra/database/tables/document.table.ts
+import { pgTable, varchar } from "drizzle-orm/pg-core";
 import { SharedColumns } from "@infra/database/utils/shared-cols";
 
 export const documentTable = pgTable("documents", {
@@ -111,17 +113,14 @@ const row = {
   // address flattened by hand
   country: host.address.country,
   city: host.address.city,
-  state: host.address.state,
-  zipCode: host.address.zipCode,
-  address: host.address.address,
+  // ... manually map each address field
 
   // socialLinks flattened by hand
   websiteLink: host.socialLinks.websiteLink,
-  instagramLink: host.socialLinks.instagramLink,
-  // ...
+  // ... manually map each social link
 };
 
-// Another method repeats a similar manual mapping for a different query…
+
 ```
 
 ## !do schema-driven-serialization
@@ -133,48 +132,60 @@ const row = {
 * **Reusable helpers** in the repository instead of ad-hoc mapping
 
 ```typescript !example
-// File: domain/user/user.schema.ts
+// File: domain/host/host.schema.ts
 import * as S from "@effect/schema/Schema";
 
-export const UserSchema = S.Struct({
-  id: S.String,          // already branded at the domain layer
+// Schema for the serialized (flattened) shape
+export const HostSchema = S.Struct({
+  id: S.String,
   firstName: S.String,
   lastName: S.String,
-  // address + socialLinks are already flattened to DB-friendly shape here
-  country: S.String,
-  city: S.String,
-  websiteLink: S.optional(S.String),
+  // Nested address value object
+  address: S.Struct({
+    country: S.String,
+    city: S.String,
+    // ... other address fields
+  }),
+  // Nested socialLinks value object
+  socialLinks: S.Struct({
+    websiteLink: S.optional(S.String),
+    // ... other social links
+  }),
 });
 
-export type SerializedUser = S.Schema.Encoded<typeof UserSchema>;
+export type SerializedHost = S.Schema.Encoded<typeof HostSchema>;
 ```
 
 ```typescript !example
-// File: domain/user/user.entity.ts
-export class User {
+// File: domain/host/host.entity.ts
+import { Effect as E } from "effect";
+import * as S from "@effect/schema/Schema";
+import { HostSchema, SerializedHost } from "./host.schema";
+
+export class Host {
   // ...
 
-  // Domain entity → SerializedUser (flattened)
-  serialized(): E.Effect<SerializedUser, SerializationError, never> {
-    return S.encode(UserSchema)(this).pipe(
+  // Domain entity → SerializedHost (with nested objects)
+  serialized(): E.Effect<SerializedHost, SerializationError, never> {
+    return S.encode(HostSchema)(this).pipe(
       E.mapError(
         (err) =>
-          new SerializationError("Failed to serialize User", "User", err),
+          new SerializationError("Failed to serialize Host", "Host", err),
       ),
     );
   }
 
-  // SerializedUser → Domain entity
+  // SerializedHost → Domain entity
   static create(
-    input: SerializedUser,
-  ): E.Effect<User, DeserializationError, never> {
-    return S.decodeUnknown(UserSchema)(input).pipe(
-      E.map((data) => new User(data)),
+    input: SerializedHost,
+  ): E.Effect<Host, DeserializationError, never> {
+    return S.decodeUnknown(HostSchema)(input).pipe(
+      E.map((data) => new Host(data)),
       E.mapError(
         (err) =>
           new DeserializationError(
-            "Failed to deserialize User",
-            "User",
+            "Failed to deserialize Host",
+            "Host",
             err,
           ),
       ),
@@ -184,44 +195,60 @@ export class User {
 ```
 
 ```typescript !example
-// File: infra/repositories/user.drizzle.repository.ts
+// File: infra/repositories/host.drizzle.repository.ts
+import { Effect as E, pipe } from "effect";
+import { Host } from "@domain/entities/host/host.entity";
+import { HostRepository } from "@domain/entities/host/host.repository";
+import { HostAlreadyExistsError, HostNotFoundError } from "@domain/entities/host/host.error";
+import { hosts } from "@infra/database/models";
+import type { RepositoryEffect } from "@domain/utils/base.repository";
+import type { HostModel } from "@infra/database/models";
 
-export class UserDrizzleRepository extends UserRepository {
+export class HostDrizzleRepository extends HostRepository {
   constructor(private readonly db: any) {
     super();
   }
 
-  // SerializedUser -> DB row
-  private toDbSerialized(serialized: SerializedUser,): E.Effect<SerializedUser, SerializationError, never> 
-  {
-    return E.succeed(serialized);
-  }
-
-  // DB row -> domain User entity using the domain create()
-  private fromDbRow(row: any): E.Effect<User, QueryError, never> {
+  // Flatten nested domain VO(s) to table columns
+  private toDbSerialized(host: Host): E.Effect<any, HostNotFoundError, never> {
     return pipe(
-      User.create(row as SerializedUser),
-      E.mapError(
-        (err) =>
-          new DeserializationError(
-            "Failed to deserialize User from DB",  "User", err,
-        ),
-      ),
+      host.serialized(),
+      E.map((s) => {
+        const { address, socialLinks, ...base } = s;
+        return { ...base, ...address, ...socialLinks };
+      }),
     );
   }
 
-  // Example: domain User -> SerializedUser -> insert into DB
-  add(entity: User): RepositoryEffect<User, MutationError> {
+  // DB row -> domain Host entity
+  private createEntity(hostData: HostModel): E.Effect<Host, HostNotFoundError> {
+    const serializedHost = {
+      ...hostData,
+      address: {
+        country: hostData.country,
+        city: hostData.city,
+        // ... reconstruct other address fields
+      },
+      socialLinks: {
+        websiteLink: hostData.websiteLink,
+        // ... reconstruct other social links
+      },
+    };
+
     return pipe(
-      entity.serialized(), // User -> SerializedUser (flattened)
-      E.flatMap((serialized) => this.toDbSerialized(serialized)),
+      Host.create(serializedHost),
+      E.mapError(() => new HostNotFoundError()),
+    );
+  }
+
+  // Example: domain Host -> SerializedHost -> flatten -> insert into DB
+  add(entity: Host): RepositoryEffect<Host, HostAlreadyExistsError> {
+    return pipe(
+      this.toDbSerialized(entity), // Host -> flattened DB row
       E.flatMap((dbData) =>
         E.tryPromise({
-          try: () => this.db.insert(users).values(dbData),
-          catch: (error) =>
-            new UserMutationError(
-              "add",  `Failed to add user: ${error}`, "User", entity.id,
-            ),
+          try: () => this.db.insert(hosts).values(dbData),
+          catch: () => new HostAlreadyExistsError(entity.id),
         }),
       ),
       E.as(entity),
@@ -267,8 +294,15 @@ fetchByUserId(userId: UUID): RepositoryEffect<O.Option<Host>, HostNotFoundError>
       const row = rows[0];
       const serializedHost = {
         ...row,
-        address: { /* ... */ },
-        socialLinks: { /* ... */ },
+        address: {
+          country: row.country,
+          city: row.city,
+          // ... manually reconstruct each address field
+        },
+        socialLinks: {
+          websiteLink: row.websiteLink,
+          // ... manually reconstruct each social link
+        },
       };
 
       return Host.create(serializedHost).pipe(
@@ -289,68 +323,65 @@ fetchByUserId(userId: UUID): RepositoryEffect<O.Option<Host>, HostNotFoundError>
 * **Cleaner repository methods** focused only on *what* they query
 
 ```typescript !example
-// File: infra/database/utils/execute-query.ts
-import { Effect as E } from "effect";
-
-/**
- * Wrap a DB Promise in an Effect and map driver errors to a repository error.
- */
-export function executeQuery<T, EErr>(
-  query: () => Promise<T>,
-  onError: (cause: unknown) => EErr,
-): E.Effect<T, EErr> {
-  return E.tryPromise({
-    try: query,
-    catch: onError,
-  });
-}
-```
-
-```typescript !example
 // File: infra/repositories/host.drizzle.repository.ts
-type HostRow = typeof hosts.$inferSelect;
+import { Effect as E, Option as O, pipe } from "effect";
+import { eq } from "drizzle-orm";
+import { Host } from "@domain/entities/host/host.entity";
+import { HostRepository } from "@domain/entities/host/host.repository";
+import { HostNotFoundError } from "@domain/entities/host/host.error";
+import { hosts } from "@infra/database/models";
+import type { RepositoryEffect } from "@domain/utils/base.repository";
+import type { UUID } from "@domain/utils/refined.types";
+import type { HostModel } from "@infra/database/models";
 
-const rowToHost = (row: HostRow): E.Effect<Host, HostNotFoundError> => {
-  // Map flat DB row into the serialized shape expected by Host.create().
-  const serializedHost = {
-    ...row,
-    address: {
-      country: row.country,
-      city: row.city,
-      state: row.state,
-      zipCode: row.zipCode,
-      address: row.address,
-    },
-    socialLinks: {
-      websiteLink: row.websiteLink,
-      venmoLink: row.venmoLink,
-      googleReviewLink: row.googleReviewLink,
-      facebookLink: row.facebookLink,
-      instagramLink: row.instagramLink,
-      twitterLink: row.twitterLink,
-    },
-  };
+type DrizzleDB = any;
 
-  return pipe(
-    Host.create(serializedHost),
-    E.mapError(() => new HostNotFoundError()),
-  );
-};
+export class HostDrizzleRepository extends HostRepository {
+  constructor(private readonly db: DrizzleDB) {
+    super();
+  }
 
-export class HostDrizzleRepository {
-  constructor(private readonly db: DrizzleDB) {}
+  // Wrap a DB Promise in an Effect and map driver errors to a repository error
+  private executeQuery<T>(query: () => Promise<T>): E.Effect<T, HostNotFoundError> {
+    return E.tryPromise({
+      try: query,
+      catch: () => new HostNotFoundError(),
+    });
+  }
+
+  // Map flat DB row into the serialized shape expected by Host.create()
+  private createEntity(hostData: HostModel): E.Effect<Host, HostNotFoundError> {
+    const serializedHost = {
+      ...hostData,
+      address: {
+        country: hostData.country,
+        city: hostData.city,
+        // ... reconstruct other address fields
+      },
+      socialLinks: {
+        websiteLink: hostData.websiteLink,
+        instagramLink: hostData.instagramLink,
+        // ... reconstruct other social links
+      },
+    };
+
+    return pipe(
+      Host.create(serializedHost),
+      E.mapError(() => new HostNotFoundError()),
+    );
+  }
 
   // One row or none
   private fetchSingle(
-    query: () => Promise<HostRow[]>,
+    query: () => Promise<HostModel[]>,
   ): E.Effect<O.Option<Host>, HostNotFoundError> {
     return pipe(
-      executeQuery(query, () => new HostNotFoundError()),
+      this.executeQuery(query),
       E.map(O.fromIterable),
       E.flatMap((option) =>
         O.match(option, {
           onNone: () => E.succeed(O.none()),
-          onSome: (row) => pipe(rowToHost(row), E.map(O.some)),
+          onSome: (hostData) => pipe(this.createEntity(hostData), E.map(O.some)),
         }),
       ),
     );
@@ -358,11 +389,11 @@ export class HostDrizzleRepository {
 
   // Many rows
   private fetchMultiple(
-    query: () => Promise<HostRow[]>,
+    query: () => Promise<HostModel[]>,
   ): E.Effect<readonly Host[], HostNotFoundError> {
     return pipe(
-      executeQuery(query, () => new HostNotFoundError()),
-      E.flatMap((rows) => E.all(rows.map((row) => rowToHost(row)))),
+      this.executeQuery(query),
+      E.flatMap((rows) => E.all(rows.map((row) => this.createEntity(row)))),
     );
   }
 
