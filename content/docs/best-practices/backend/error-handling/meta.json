@@ -2,7 +2,7 @@
   "title": "Error Handling",
   "defaultOpen": true,
   "pages": [
-    "Error Handling - Monads vs Try-Catch",
+    "better-error-handling-with-monads",
     "Error Handling Architecture - MVC"
   ]
 } 
