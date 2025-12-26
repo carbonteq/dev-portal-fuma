@@ -3,6 +3,6 @@
   "defaultOpen": true,
   "pages": [
     "better-error-handling-with-monads",
-    "Error Handling Architecture - MVC"
+    "multi-level-error-handling-with-monads"
   ]
 } 
