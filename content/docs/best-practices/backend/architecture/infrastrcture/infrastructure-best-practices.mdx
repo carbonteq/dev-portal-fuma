@@ -1,0 +1,421 @@
+---
+title: Best Practices
+---
+
+---
+
+## Shared Column Utility Patterns
+
+<BestPractice title="Shared Column Utility Patterns">
+
+Use a shared columns utility for repeated technical columns (ids, timestamps, etc.) instead of redefining them in every table.
+
+## !dont copy-paste-columns
+
+**Repeat common columns manually in every table.** This leads to:
+
+- Inconsistent column names and types across tables  
+- Hard-to-apply global changes (e.g., changing timestamp mode)  
+- Copy–paste errors when adding new tables  
+
+```typescript !example
+// ❌ Bad: Each table redefines common columns by hand
+
+// File: infra/database/tables/user.table.ts
+export const userTable = pgTable("users", {
+  id: uuid("id").primaryKey().notNull(),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+  email: varchar("email", { length: 320 }),
+});
+
+// File: infra/database/tables/document.table.ts
+export const documentTable = pgTable("documents", {
+  id: uuid("id").primaryKey().notNull(),                         // duplicated
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(), // duplicated
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(), // duplicated
+  title: varchar("title", { length: 255 }),
+});
+```
+
+## !do shared-columns-utility
+
+**Extract shared columns into a tiny helper module.** This provides:
+
+* **Consistent column definitions** for ids and timestamps
+* **Single place** to change types/defaults for all tables
+* **Clear intent** about “technical” columns vs business columns
+
+```typescript !example
+// File: infra/database/utils/shared-cols.ts
+import { timestamp, uuid } from "drizzle-orm/pg-core";
+
+// Small helper for UUID columns
+export const UuidCol = (name: string) => uuid(name);
+
+// Shared technical columns for all tables
+export const SharedColumns = {
+  id: UuidCol("id").primaryKey().notNull(),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+};
+```
+
+```typescript !example
+// File: infra/database/tables/user.table.ts
+import { pgTable, varchar } from "drizzle-orm/pg-core";
+import { SharedColumns } from "@infra/database/utils/shared-cols";
+
+export const userTable = pgTable("users", {
+  ...SharedColumns, // id, createdAt, updatedAt
+  email: varchar("email", { length: 320 }),
+});
+
+// File: infra/database/tables/document.table.ts
+import { pgTable, varchar } from "drizzle-orm/pg-core";
+import { SharedColumns } from "@infra/database/utils/shared-cols";
+
+export const documentTable = pgTable("documents", {
+  ...SharedColumns, // id, createdAt, updatedAt
+  title: varchar("title", { length: 255 }),
+});
+```
+
+</BestPractice>
+
+---
+
+## Serialization & Flattening Patterns for nested objects
+
+<BestPractice title="Serialization & Flattening Patterns for nested objects">
+
+Use schema-driven serialization to flatten nested domain objects into DB-friendly rows and to reconstruct entities from rows.
+
+## !dont ad-hoc-nested-mapping
+
+**Manually map nested objects inline in each repository method.** This causes:
+
+* Repeated, slightly different mapping logic in multiple places
+* Easy-to-miss fields when the domain model changes
+* Hidden coupling between DB shapes and domain shapes
+
+```typescript !example
+// ❌ Bad: Manual, scattered mapping logic in each repository method
+
+const host = /* Host entity from domain */;
+
+// Repository manually flattens nested objects into columns
+const row = {
+  id: host.id,
+  firstName: host.firstName,
+  lastName: host.lastName,
+
+  // address flattened by hand
+  country: host.address.country,
+  city: host.address.city,
+  // ... manually map each address field
+
+  // socialLinks flattened by hand
+  websiteLink: host.socialLinks.websiteLink,
+  // ... manually map each social link
+};
+
+
+```
+
+## !do schema-driven-serialization
+
+**Use a single serialization / deserialization path (e.g. Effect Schema) to flatten and rebuild entities.** This provides:
+
+* **Centralized mapping** between domain entity ↔ serialized shape ↔ DB row
+* **Safer nested handling** for value objects and aggregates
+* **Reusable helpers** in the repository instead of ad-hoc mapping
+
+```typescript !example
+// File: domain/host/host.schema.ts
+import * as S from "@effect/schema/Schema";
+
+// Schema for the serialized (flattened) shape
+export const HostSchema = S.Struct({
+  id: S.String,
+  firstName: S.String,
+  lastName: S.String,
+  // Nested address value object
+  address: S.Struct({
+    country: S.String,
+    city: S.String,
+    // ... other address fields
+  }),
+  // Nested socialLinks value object
+  socialLinks: S.Struct({
+    websiteLink: S.optional(S.String),
+    // ... other social links
+  }),
+});
+
+export type SerializedHost = S.Schema.Encoded<typeof HostSchema>;
+```
+
+```typescript !example
+// File: domain/host/host.entity.ts
+import { Effect as E } from "effect";
+import * as S from "@effect/schema/Schema";
+import { HostSchema, SerializedHost } from "./host.schema";
+
+export class Host {
+  // ...
+
+  // Domain entity → SerializedHost (with nested objects)
+  serialized(): E.Effect<SerializedHost, SerializationError, never> {
+    return S.encode(HostSchema)(this).pipe(
+      E.mapError(
+        (err) =>
+          new SerializationError("Failed to serialize Host", "Host", err),
+      ),
+    );
+  }
+
+  // SerializedHost → Domain entity
+  static create(
+    input: SerializedHost,
+  ): E.Effect<Host, DeserializationError, never> {
+    return S.decodeUnknown(HostSchema)(input).pipe(
+      E.map((data) => new Host(data)),
+      E.mapError(
+        (err) =>
+          new DeserializationError(
+            "Failed to deserialize Host",
+            "Host",
+            err,
+          ),
+      ),
+    );
+  }
+}
+```
+
+```typescript !example
+// File: infra/repositories/host.drizzle.repository.ts
+import { Effect as E, pipe } from "effect";
+import { Host } from "@domain/entities/host/host.entity";
+import { HostRepository } from "@domain/entities/host/host.repository";
+import { HostAlreadyExistsError, HostNotFoundError } from "@domain/entities/host/host.error";
+import { hosts } from "@infra/database/models";
+import type { RepositoryEffect } from "@domain/utils/base.repository";
+import type { HostModel } from "@infra/database/models";
+
+export class HostDrizzleRepository extends HostRepository {
+  constructor(private readonly db: any) {
+    super();
+  }
+
+  // Flatten nested domain VO(s) to table columns
+  private toDbSerialized(host: Host): E.Effect<any, HostNotFoundError, never> {
+    return pipe(
+      host.serialized(),
+      E.map((s) => {
+        const { address, socialLinks, ...base } = s;
+        return { ...base, ...address, ...socialLinks };
+      }),
+    );
+  }
+
+  // DB row -> domain Host entity
+  private createEntity(hostData: HostModel): E.Effect<Host, HostNotFoundError> {
+    const serializedHost = {
+      ...hostData,
+      address: {
+        country: hostData.country,
+        city: hostData.city,
+        // ... reconstruct other address fields
+      },
+      socialLinks: {
+        websiteLink: hostData.websiteLink,
+        // ... reconstruct other social links
+      },
+    };
+
+    return pipe(
+      Host.create(serializedHost),
+      E.mapError(() => new HostNotFoundError()),
+    );
+  }
+
+  // Example: domain Host -> SerializedHost -> flatten -> insert into DB
+  add(entity: Host): RepositoryEffect<Host, HostAlreadyExistsError> {
+    return pipe(
+      this.toDbSerialized(entity), // Host -> flattened DB row
+      E.flatMap((dbData) =>
+        E.tryPromise({
+          try: () => this.db.insert(hosts).values(dbData),
+          catch: () => new HostAlreadyExistsError(entity.id),
+        }),
+      ),
+      E.as(entity),
+    );
+  }
+}
+
+```
+
+</BestPractice>
+
+---
+
+## Query Helper Utility Patterns
+
+<BestPractice title="Query Helper Utility Patterns">
+
+Extract reusable query helpers (execute, map, single/multiple) instead of re-implementing query + error + mapping logic in every method.
+
+## !dont repeated-query-logic
+
+**Inline query execution and mapping in every repository method.** This causes:
+
+* Duplicated error handling and logging
+* Slightly different behaviors for “single vs multiple” queries
+* Harder to introduce cross-cutting concerns (timeouts, metrics, etc.)
+
+```typescript !example
+// ❌ Bad: Each method does its own query + error + mapping
+
+fetchByUserId(userId: UUID): RepositoryEffect<O.Option<Host>, HostNotFoundError> {
+  return E.tryPromise({
+    try: () =>
+      this.db.select().from(hosts).where(eq(hosts.userId, userId)).limit(1),
+    catch: () => new HostNotFoundError(),
+  }).pipe(
+    E.flatMap((rows) => {
+      if (rows.length === 0) {
+        return E.succeed(O.none());
+      }
+
+      // Inline DB row -> Host mapping
+      const row = rows[0];
+      const serializedHost = {
+        ...row,
+        address: {
+          country: row.country,
+          city: row.city,
+          // ... manually reconstruct each address field
+        },
+        socialLinks: {
+          websiteLink: row.websiteLink,
+          // ... manually reconstruct each social link
+        },
+      };
+
+      return Host.create(serializedHost).pipe(
+        E.map(O.some),
+        E.mapError(() => new HostNotFoundError()),
+      );
+    }),
+  );
+}
+```
+
+## !do reusable-query-helpers
+
+**Centralize query execution and mapping in small helpers.** This provides:
+
+* **Single place** to handle driver errors and wrap them in repository errors
+* **Consistent behavior** for “single” and “multiple” fetch patterns
+* **Cleaner repository methods** focused only on *what* they query
+
+```typescript !example
+// File: infra/repositories/host.drizzle.repository.ts
+import { Effect as E, Option as O, pipe } from "effect";
+import { eq } from "drizzle-orm";
+import { Host } from "@domain/entities/host/host.entity";
+import { HostRepository } from "@domain/entities/host/host.repository";
+import { HostNotFoundError } from "@domain/entities/host/host.error";
+import { hosts } from "@infra/database/models";
+import type { RepositoryEffect } from "@domain/utils/base.repository";
+import type { UUID } from "@domain/utils/refined.types";
+import type { HostModel } from "@infra/database/models";
+
+type DrizzleDB = any;
+
+export class HostDrizzleRepository extends HostRepository {
+  constructor(private readonly db: DrizzleDB) {
+    super();
+  }
+
+  // Wrap a DB Promise in an Effect and map driver errors to a repository error
+  private executeQuery<T>(query: () => Promise<T>): E.Effect<T, HostNotFoundError> {
+    return E.tryPromise({
+      try: query,
+      catch: () => new HostNotFoundError(),
+    });
+  }
+
+  // Map flat DB row into the serialized shape expected by Host.create()
+  private createEntity(hostData: HostModel): E.Effect<Host, HostNotFoundError> {
+    const serializedHost = {
+      ...hostData,
+      address: {
+        country: hostData.country,
+        city: hostData.city,
+        // ... reconstruct other address fields
+      },
+      socialLinks: {
+        websiteLink: hostData.websiteLink,
+        instagramLink: hostData.instagramLink,
+        // ... reconstruct other social links
+      },
+    };
+
+    return pipe(
+      Host.create(serializedHost),
+      E.mapError(() => new HostNotFoundError()),
+    );
+  }
+
+  // One row or none
+  private fetchSingle(
+    query: () => Promise<HostModel[]>,
+  ): E.Effect<O.Option<Host>, HostNotFoundError> {
+    return pipe(
+      this.executeQuery(query),
+      E.map(O.fromIterable),
+      E.flatMap((option) =>
+        O.match(option, {
+          onNone: () => E.succeed(O.none()),
+          onSome: (hostData) => pipe(this.createEntity(hostData), E.map(O.some)),
+        }),
+      ),
+    );
+  }
+
+  // Many rows
+  private fetchMultiple(
+    query: () => Promise<HostModel[]>,
+  ): E.Effect<readonly Host[], HostNotFoundError> {
+    return pipe(
+      this.executeQuery(query),
+      E.flatMap((rows) => E.all(rows.map((row) => this.createEntity(row)))),
+    );
+  }
+
+  // Repository methods become small and declarative:
+
+  fetchByUserId(
+    userId: UUID,
+  ): RepositoryEffect<O.Option<Host>, HostNotFoundError> {
+    return this.fetchSingle(() =>
+      this.db.select().from(hosts).where(eq(hosts.userId, userId)).limit(1),
+    );
+  }
+
+  fetchByPhoneNumber(
+    phoneNumber: number,
+  ): RepositoryEffect<readonly Host[], HostNotFoundError> {
+    return this.fetchMultiple(() =>
+      this.db.select().from(hosts).where(eq(hosts.phoneNumber, phoneNumber)),
+    );
+  }
+}
+```
+
+</BestPractice>
+

@@ -4,13 +4,18 @@ description: "A friendly, step-by-step tour of our infrastructure: start with a 
 ---
 
 import { ScrollyCoding } from "@/components/ui/ScrollyCoding";
+import { File, Folder, Files } from 'fumadocs-ui/components/files';
+import { BiLogoTypescript } from 'react-icons/bi';
+import { Layers, Database, Table, Settings, Cloud } from "lucide-react";
+
 
 # Infrastructure Evolution
 
 <ScrollyCoding>
 
 ## !!steps Start with a Minimal Host Model
-Let’s start small. We’ll set up a tiny `hosts` table with just the basics, then improve it as we go.
+- Begin with a tiny `hosts` table containing only the most essential columns.
+- Keep it simple first, then evolve the model as needs grow.
 
 ```typescript !
 import { pgTable, text, uuid } from "drizzle-orm/pg-core";
@@ -26,7 +31,9 @@ export const hosts = pgTable("hosts", {
 ```
 
 ## !!steps Introduce Shared Columns Utility
-Now we’ll pull common pieces (UUIDs and timestamps) into a tiny helper so every table stays consistent.
+Almost every table needs create/updatetimestamps and unique IDs. 
+- Instead of copying the same code everywhere, we'll create a reusable "blueprint" (`sharedColumns`). 
+- This keeps our data consistent and our code clean!
 
 ```typescript !
 import { timestamp, uuid } from "drizzle-orm/pg-core";
@@ -42,7 +49,9 @@ export const SharedColumns = {
 ```
 
 ## !!steps Apply Shared Columns and FK
-With that helper in place, let’s refactor the model to use it and hook up the `userId` foreign key.
+Now we plug our helper into the hosts table.
+- We spread `...SharedColumns` to get `id`, `createdAt`, and `updatedAt` , and then add a `userId` column that references the users table.
+- This step shows how to reuse shared columns and wire up a foreign key (userId) in Drizzle.
 
 ```typescript !
 // !collapse(1:10) collapsed
@@ -71,7 +80,8 @@ export const hosts = pgTable("hosts", {
 ```
 
 ## !!steps Finalize Model: Address and Social Links
-Time to grow the table to match the domain: we’ll add optional fields, address details, and social links.
+The real domain isn’t just an ID and email – hosts have profile data.
+- Here we expand the hosts table with optional details: date of birth, phone number, address fields, and social links.
 
 ```typescript !
 // !collapse(1:12) collapsed
@@ -124,7 +134,8 @@ export type NewHostModel = typeof hosts.$inferInsert;
 ```
 
 ## !!steps Repository: Skeleton and Serialization
-Now for the repository. We’ll tuck the model away above and focus on one simple idea first: flatten nested domain objects with `toDbSerialized` before writing to the DB.
+With the table done, we switch to the repository.
+- The key idea: before writing a domain entity to the database, we call `toDbSerialized` to flatten any nested value objects into simple columns.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -166,7 +177,8 @@ export class HostDrizzleRepository extends HostRepository {
 ```
 
 ## !!steps Add: Insert Method (add)
-Let’s add the first write method. `add` serializes the entity and inserts it, with clear Effect-based error handling.
+Let’s add the first write method.
+- `add` serializes the entity and inserts it into the database, with clear Effect-based error handling.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -222,7 +234,8 @@ export class HostDrizzleRepository extends HostRepository {
 ```
 
 ## !!steps Add: Update Method
-Next up, `update`. We make sure the record exists, serialize it, and persist the changes.
+Next up, let's add the `update` method.
+- We make sure the record exists, serialize the new data, and persist the changes.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -277,7 +290,7 @@ export class HostDrizzleRepository extends HostRepository {
   }
 
   // !mark(1:13) #22c55e
-  update(host: Host): RepositoryEffect<Host, HostUpdateError> {
+  update(host: Host): RepositoryEffect<Host, HostUpdateError | HostNotFoundError> {
     return pipe(
       this.ensureExists(host.id),
       E.flatMap(() => this.toDbSerialized(host)),
@@ -324,7 +337,8 @@ export class HostDrizzleRepository extends HostRepository {
  
 
 ## !!steps Fetch: By User ID
-A small read operation by `userId`, returning an `Option` when nothing is found.
+Fetch one host by user id.
+- We call a reusable helper `fetchSingle` that runs the query, maps the row to a Host entity, and returns an Option.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -481,7 +495,8 @@ export class HostDrizzleRepository extends HostRepository {
  
 
 ## !!steps Fetch: By Phone Number
-Fetch many by phone number. This shows how we reuse our list-fetch helper.
+Fetch many hosts by phone number. 
+- We call a reusable helper `fetchMultiple` that runs the query, maps the rows to Host entities, and returns a list.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -632,7 +647,8 @@ export class HostDrizzleRepository extends HostRepository {
  
 
 ## !!steps Fetch: Complete Profiles
-Let’s build a filtered, paginated query. “Complete profiles” have all the fields we care about.
+Not every host has a fully filled profile.
+- This step builds a query that returns only “complete profiles” and applies pagination. 
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -842,7 +858,8 @@ export class HostDrizzleRepository extends HostRepository {
 ```
 
 ## !!steps Fetch: Flexible Query
-A flexible search: combine text search, filters, and pagination in one place.
+Here we combine text search, filters, and pagination into one flexible search function.
+- The repository builds a dynamic query, executes it, and returns a paginated list of Host entities.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -1004,7 +1021,7 @@ export class HostDrizzleRepository extends HostRepository {
 ```
 
 ## !!steps Remove: Delete by ID
-Finally, delete by id: check it exists, then remove it.
+Finally, delete a host by id: check if it exists, then remove it.
 
 ```typescript !
 // !collapse(1:17) collapsed
@@ -1165,7 +1182,7 @@ export class HostDrizzleRepository extends HostRepository {
   }
 
   // !mark(1:12) #22c55e
-  remove(hostId: UUID): RepositoryEffect<boolean, HostDeleteError> {
+  remove(hostId: UUID): RepositoryEffect<boolean, HostDeleteError | HostNotFoundError> {
     return pipe(
       this.ensureExists(hostId),
       E.flatMap(() =>
@@ -1180,8 +1197,49 @@ export class HostDrizzleRepository extends HostRepository {
 }
 ```
 
+ 
+
 
 </ScrollyCoding>
+
+## Code Organization
+
+The infrastructure layer is organized around concrete implementations of persistence and integration concerns: repositories, database setup (schema & tables), and configuration.
+
+<Files>
+  <Folder name="infra" defaultOpen>    
+    <Folder name="repositories" defaultOpen icon={<Layers />}>
+      <File name="user.repository.impl.ts" icon={<BiLogoTypescript />} />
+      <File name="game.repository.impl.ts" icon={<BiLogoTypescript />} />
+      <File name="todo.repository.impl.ts" icon={<BiLogoTypescript />} />
+    </Folder>
+
+    <Folder name="database" icon={<Database />}>
+      <File name="schema.ts" icon={<BiLogoTypescript />} />
+      <Folder name="models" icon={<Table />}>
+        <File name="user.table.ts" icon={<BiLogoTypescript />} />
+        <File name="document.table.ts" icon={<BiLogoTypescript />} />
+        <File name="..." icon={<BiLogoTypescript />} />
+      </Folder>
+      <File name="migrations/" icon={<Database />} />
+      <File name="seeders/" icon={<Database />} />
+      <File name="utils/" icon={<Database />} />
+    </Folder>
+
+    <Folder name="services" icon={<Cloud />}>
+      <File name="db-health.service.ts" icon={<BiLogoTypescript />} />
+      <File name="run-migrations.ts" icon={<BiLogoTypescript />} />
+    </Folder>
+
+    <Folder name="config" icon={<Settings />}>
+      <File name="env.config.ts" icon={<BiLogoTypescript />} />
+      <File name="orm.config.ts" icon={<BiLogoTypescript />} />
+      <File name="index.ts" icon={<BiLogoTypescript />} />
+    </Folder>
+  </Folder>
+</Files>
+
+
 
 ### Key Lessons
 
