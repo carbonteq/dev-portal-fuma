@@ -1,6 +1,6 @@
 ---
-title: "Type churn on boundaries: Domain ⇄ DB"
-description: "How strings, UUIDs, null/undefined, Option<T>, DateTimeFromAny, and structured data flow across client, domain, and database boundaries — using Host as a concrete example."
+title: "Type Boundaries: Client, App & DB"
+description: "How strings, UUIDs, null/undefined, Option<T>, DateTimeFromAny, and structured data flow across client/API, internal application code, and database boundaries — using Host as a concrete example."
 ---
 
 import { ScrollyCoding } from "@/components/ui/ScrollyCoding";
@@ -8,62 +8,73 @@ import { File, Folder, Files } from "fumadocs-ui/components/files";
 import { BiLogoTypescript } from "react-icons/bi";
 import { Layers, Database, Settings } from "lucide-react";
 
+# Type Boundaries: Client/API ⇄ App ⇄ DB
 
-## What are Boundaries?
+## What is a Type Boundary?
 
-In a well-architected backend, your application is divided into **layers**:
+**A type boundary is any point where data crosses between “outside your code” and “inside your code”.**
 
-- **Client/API Layer**: Where external requests come in (HTTP, GraphQL, webhooks)
-- **Domain Layer**: Your business logic, entities, and rules
-- **Database Layer**: Where data is persisted (PostgreSQL, MySQL, MongoDB)
+- Outside your code, data is just **bytes / strings / JSON / rows**.
+- Inside your code, you want **meaningful runtime types** and **invariants you can rely on**.
 
-The **boundaries** are the interfaces between these layers. Data crosses boundaries when:
-- A client sends a request → enters your domain
-- Your domain queries the database → DB returns rows
-- Your domain sends a response → exits to the client
+So a type boundary is the place where you must do two things:
+- **Decode**: turn “serialized stuff” into “runtime stuff”
+- **Encode**: turn “runtime stuff” back into “serialized stuff”
 
-## The Problem: Type Mismatch at Boundaries
+This is *not* a Clean Architecture / DDD concept. It’s a practical integration concept: **if you can’t fully trust the shape/meaning of a value, you’re at a type boundary.**
 
-Each layer speaks a different "language" for representing data:
+## Quick Mental Model (works in any architecture)
 
-**Clients** send JSON with:
-- IDs as plain `string` (no validation - could be any text!)
-- Optional fields as `T | null | undefined` (or just missing)
-- Dates in multiple formats: `"2024-01-15" (ISO string)`, `1705276800000 (timestamp)`, or `Date` objects
-- Inconsistent, unvalidated data
+![Type boundaries blueprint diagram](/img/best_practices/type-boundaries-blueprint.jpeg)
 
-**Domain** needs strict types:
-- `UUID` branded type (validated, type-safe identifiers)
-- `Option<T>` for explicit optionality (no more null checks everywhere)
-- `Date` objects for consistent date handling
-- Validated, normalized data
+**Rule of thumb**: if a function takes `unknown`, `any`, `string`, or a “row shape”… treat it as **boundary code**.
 
-**Database** stores primitives:
-- Columns: `uuid`, `text`, `timestamp`, `integer`
-- `null` for missing values (no `Option<T>`, no branded types)
+**What’s happening**: your app lives between systems that speak different “wire formats”.
 
-**The core problem**: If you directly use client data in your domain or DB rows without transformation, you get:
-- ❌ Runtime errors from invalid UUIDs
-- ❌ Scattered null/undefined checks throughout your code
-- ❌ Date parsing bugs and timezone issues
-- ❌ Type unsafe code that compiles but crashes at runtime
+**Two common serializations**:
+- **Protocol serialization** (HTTP/JSON): missing fields, strings everywhere, dates in “whatever” formats.
+- **Persistence serialization** (DB rows/columns): `null` instead of “missing”, flattened columns, JSON blobs, database-native types.
 
-## The Solution: Transformation at Boundaries
+**Why it doesn’t map 1:1**:
+- HTTP can omit a field (`undefined`); DB typically stores absence as `null`.
+- Your app wants guarantees (`UUID`, `Date`, `Option<T>`); boundaries give you raw primitives.
+- Without a single decoder, invalid variants (wrong combinations of fields) creep in over time.
 
-We use **refined types**, **utility functions**, and **helpers** to transform data as it crosses boundaries:
+**Goal**: decode + validate once at the edge, then encode deterministically when leaving the app.
 
-1. **Refined Types** (`UUID`, `DateTimeFromAny`): Validate and transform raw data
-2. **Helper Functions** (`normalizeMaybe`, `optionToMaybe`): Handle optional values consistently
-3. **Schemas** (`HostSchema`): Enforce validation at boundaries
-4. **Serialization methods**: Convert domain types back to boundary-compatible types
+- **Client/API boundary**: Where external requests come in (HTTP, GraphQL, webhooks)
+- **Application boundary**: Your code’s internal representation (types + invariants you can rely on)
+- **Database boundary**: Where data is persisted (PostgreSQL, MySQL, MongoDB)
+
+Data crosses boundaries when:
+- A client sends a request → your app decodes it
+- Your app reads/writes the database → you map rows/columns to your runtime types (and back)
+- Your app sends a response → your app encodes it
+
+## Ideal Fix: One Schema = One Encoder/Decoder + Variant Validation
+
+What we actually want is **one source of truth** that can:
+- **Decode** multiple boundary representations into one runtime type (via **unions** + transforms)
+- **Validate** invariants so only valid variants exist (via **schema filters/refinements**)
+- **Encode** back out predictably (true **two-way transformations**)
+
+In other words: instead of “a bit of parsing here, a bit of mapping there”, we aim for a single schema per concept (e.g. `HostSchema`) that acts as **the** encoder/decoder for your app.
+
+Concretely, that looks like:
+
+- **Union-based decoding**: accept “what the world sends” (string/number/Date, missing vs null, etc.) and normalize it.
+- **Schema-derived types**: runtime type (`S.Schema.Type<...>`) and boundary type (`S.Schema.Encoded<...>`) stay in sync automatically.
+- **Filters/refinements**: attach rules so invalid combinations never become runtime values.
+
+If you’ve ever felt “why am I converting the same thing in five places?”, that’s the phenomenon called out around step 17 in our `Domain Overview` doc: manual encoding/decoding spreads everywhere unless you centralize it.
 
 This document shows you exactly how to implement these transformations using a `Host` entity as a real-world example.
 
 <ScrollyCoding>
 
-## !!steps Step 1 — Concrete Example: Host Entity Type Mismatch
+## !!steps Step 1 — Concrete Example: Host Type Mismatch
 
-Let's see the problem with a real example. Here's what a `Host` entity looks like from the client's perspective vs what the domain expects:
+Let's see the problem with a real example. Here's what a `Host` entity looks like from the client's perspective vs what your application code expects internally:
 
 ```typescript !
 // Client-facing shape (API DTO)
@@ -83,7 +94,7 @@ type HostRequestDTO = {
   socialLinks?: unknown;
 };
 
-// Domain expectation
+// Internal/runtime expectation (inside the app)
 import { BaseEntity, IEntity } from "@domain/utils/base.entity";
 import { UUID } from "@domain/utils/refined.types";
 import { Option as O } from "effect";
@@ -98,7 +109,7 @@ interface IHost extends IEntity {
 
 ###### The mismatch is clear:
 - Client sends: plain strings, multiple date formats, inconsistent optionals
-- Domain wants: branded `UUID`, normalized `Date`, explicit `Option<T>`
+- App code wants: branded `UUID`, normalized `Date`, explicit `Option<T>`
 
 The next steps show how to bridge this gap with refined types, schemas, and helper functions.
 
@@ -106,9 +117,9 @@ The next steps show how to bridge this gap with refined types, schemas, and help
 
 ## !!steps Step 2 — Refined Types: UUID and DateTimeFromAny
 
-Why do we need these? At boundaries, data is messy. The domain needs guarantees:
-- UUID: A plain string could be any text. We need validated, properly formatted UUIDs so the domain can trust IDs won't cause database errors or bugs.
-- DateTimeFromAny: Dates come as ISO strings, timestamps, or Date objects. The domain needs a consistent `Date` type for date math and comparisons.
+Why do we need these? At boundaries, data is messy. Your application code needs guarantees:
+- UUID: A plain string could be any text. We need validated, properly formatted UUIDs so the app can trust IDs won't cause database errors or bugs.
+- DateTimeFromAny: Dates come as ISO strings, timestamps, or Date objects. The app needs a consistent `Date` type for date math and comparisons.
 
 These refined types and helper functions validate and transform boundary data:
 
@@ -181,7 +192,7 @@ Key takeaway: Refined types act as gatekeepers at boundaries:
 Why this schema? Raw client JSON can't be trusted. `HostSchema` is the boundary layer that:
 - Validates IDs using `StringToUUID` (rejects invalid UUIDs)
 - Normalizes dates using `DateTimeFromAny` (converts any format → `Date`)
-- Transforms messy input → clean, validated output the domain can safely use
+- Transforms messy input → clean, validated output your app can safely use
 
 ```typescript !
 import * as S from "@effect/schema/Schema";
@@ -206,20 +217,20 @@ export type HostType = S.Schema.Type<typeof HostSchema>;
 export type HostSerialized = S.Schema.Encoded<typeof HostSchema>;
 ```
 
-This schema enforces type safety at the boundary: invalid data is rejected before it reaches the domain.
+This schema enforces type safety at the boundary: invalid data is rejected before it reaches your application code.
 
 
 
 
-## !!steps Step 4 — Handling Optional Fields: Maybe&lt;T&gt; Helper
+## !!steps Step 4 — Make “Missing” Consistent (Maybe&lt;T&gt; → Option&lt;T&gt;)
 
 Why this utility? External systems are inconsistent with optional fields. You might receive:
 - A real value: `"profile.jpg"`
 - `null` (explicitly no value)
 - `undefined` (field missing)
-- Already an `Option<T>` from another domain
+- Already an `Option<T>` from another module/package
 
-The domain wants consistency: it expects `Option<T>` everywhere. Instead of handling all 4 cases repeatedly, we use the `Maybe<T>` utility:
+The app wants consistency: it expects `Option<T>` everywhere. Instead of handling all 4 cases repeatedly, we use the `Maybe<T>` utility:
 
 ```typescript !
 
@@ -257,16 +268,16 @@ export type SerializedHost = {
 ```
 
 Helper functions:
-- `normalizeMaybe`: Converts any optional format → `Option<T>` (for entering the domain)
-- `optionToMaybe`: Converts `Option<T>` → `T | null` (for exiting the domain)
+- `normalizeMaybe`: Converts any optional format → `Option<T>` (for entering the app)
+- `optionToMaybe`: Converts `Option<T>` → `T | null` (for exiting the app)
 
 `Note`: See [Domain Overview → Maybe\<T\>](/docs/best-practices/backend/architecture/domain/domain-overview#7-introducing-maybe-t-utility-type) for more details.
 
 
 
-## !!steps Step 5 — Domain Entity: Host Constructor
+## !!steps Step 5 — Build Your Internal Entity from Decoded Data
 
-Why this conversion? The domain entity (`Host`) uses strict types internally. The constructor:
+Why this conversion? The entity (`Host`) uses strict types internally. The constructor:
 - Restores base fields (id, createdAt, updatedAt) from `BaseEntity`
 - Casts validated string IDs → `UUID` (safe because validation already happened at schema boundary)
 - Normalizes `Maybe<T>` → `Option<T>` using the `normalizeMaybe` helper
@@ -324,18 +335,18 @@ export class Host extends BaseEntity implements IHost {
 }
 ```
 
-Result: Clean, type-safe domain entity with:
+Result: Clean, type-safe internal entity with:
 - Branded `UUID` types (can't accidentally use plain strings)
 - Normalized `Date` objects (consistent date handling)
 - Explicit `Option<T>` (no more null/undefined checks scattered everywhere)
 
 
-## !!steps Step 6 — Factory Method: Host.create with Domain Validation
+## !!steps Step 6 — Validate Invariants Once (Host.create)
 
-Why a factory? The constructor handles type transformations (already normalizes via `normalizeMaybe`). The factory adds domain validation (business rules) before construction. `Host.create` is the safe entry point that:
+Why a factory? The constructor handles type transformations (already normalizes via `normalizeMaybe`). The factory adds invariant validation (business rules) before construction. `Host.create` is the safe entry point that:
 - Validates business rules (valid DOB, valid phone format) on the boundary data
 - Delegates to constructor for type normalization
-- Returns a fully validated domain entity
+- Returns a fully validated entity instance
 
 ```typescript !
 import { HostValidationError, HostGuards } from "./host.error";
@@ -372,15 +383,15 @@ Separation of concerns:
 
 
 
-## !!steps Step 7 — Exiting the Domain: serialize() Method
+## !!steps Step 7 — Encode Back Out (serialize)
 
-Why serialize? The domain uses strict internal types (`UUID`, `Option<T>`, `Date`), but external systems expect:
+Why serialize? Your code uses strict internal types (`UUID`, `Option<T>`, `Date`), but external systems expect:
 - Plain strings (not branded UUIDs)
 - `null` for missing values (not `Option.none()`)
 - Serializable date formats
 - Plain objects (not value object instances)
 
-The `serialize()` method converts domain types back to boundary-compatible types:
+The `serialize()` method converts internal types back to boundary-compatible types:
 
 ```typescript !
 import { optionToMaybe } from "@domain/utils/maybe";
@@ -412,7 +423,7 @@ Boundary transformation (reverse):
 
 
 
-## !!steps Step 8 — Database Boundary: Mapping DB Rows
+## !!steps Step 8 — Map DB Rows to the Same Boundary Shape
 
 Why another boundary? The database has its own types:
 - Primitive types only (no `Option<T>`, no branded types)
@@ -463,23 +474,213 @@ The same boundary utilities (`normalizeMaybe`, `StringToUUID`, `DateTimeFromAny`
 
 ### Key Lessons
 
-1. **Boundary types are not domain types**:
-   - Outside the domain, data is usually strings, numbers, nulls, and loosely structured objects.
-   - Inside the domain, data is refined (`UUID`), normalized (`Date`), and made explicit (`Option<T>`).
+1. **Keep serialized shapes at the edges**:
+   - Outside the app: strings, numbers, nulls, “maybe missing”, and loosely structured objects.
+   - Inside the app: refined (`UUID`), normalized (`Date`), explicit (`Option<T>`).
 
-2. **Schemas enforce boundary rules**:
-   - `StringToUUID` and `DateTimeFromAny` provide strict decoding at the boundary and deterministic encoding when leaving the domain.
+2. **Schemas give you symmetry**:
+   - `StringToUUID` and `DateTimeFromAny` decode messy inputs and give you predictable encoding on the way out.
 
-3. **`Option<T>` is the canonical representation for optional values inside the domain**:
-   - `normalizeMaybe` accepts any messy external representation (`null`, `undefined`, `Option`, raw) and produces a clean `Option<T>`.
+3. **Pick one “missing” representation internally**:
+   - `normalizeMaybe` turns `null | undefined | value | Option<value>` into `Option<T>`.
 
-4. **`Maybe<T>` keeps boundary types flexible**:
-   - Instead of repeating `T | null | undefined` everywhere, `Maybe<T>` allows external values to be permissive while preserving strictness internally.
+4. **Use `Maybe<T>` only at boundaries**:
+   - Keep it permissive at the edges; keep it strict in the core.
 
-5. **Domain and boundary concerns are separate**:
-   - The `Host` entity handles domain invariants and exposes a `serialize()` method to produce a consistent outward shape.
-   - Boundary schemas handle parsing, coercion, and transformation.
+5. **Validate once, then trust your types**:
+   - Entities/value objects enforce invariants; schemas handle parsing/coercion/encoding.
 
 
+
+---
+
+## Side topic: Value Objects (Address + SocialLinks)
+
+Throughout this document (and the Domain Overview doc), you may have noticed that `address` and `socialLinks` are handled differently from scalar fields like `dob` or `phoneNumber`. This is an **application modeling choice** (how you structure your internal types), not a boundary concern.
+
+### The Pattern You've Seen
+
+In the constructor:
+
+```typescript
+constructor(data: SerializedHost, address: Address, socialLinks: SocialLinks) {
+  super();
+  this._fromSerialized({
+    id: data.id,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt
+  });
+
+  // Scalar fields use boundary utilities
+  this.userId = data.userId as UUID;
+  this.dob = normalizeMaybe(data.dob);
+  this.phoneNumber = normalizeMaybe(data.phoneNumber);
+  this.profileImage = normalizeMaybe(data.profileImage);
+
+  // Value objects passed directly
+  this.address = address;
+  this.socialLinks = socialLinks;
+}
+```
+
+And when serializing:
+
+```typescript
+serialize(): SerializedHost {
+  return {
+    ...this._serialize(),
+    userId: this.userId,
+    dob: optionToMaybe(this.dob),
+    phoneNumber: optionToMaybe(this.phoneNumber),
+    profileImage: optionToMaybe(this.profileImage),
+    
+    // Value objects serialize themselves
+    address: this.address.serialize(),
+    socialLinks: this.socialLinks.serialize()
+  };
+}
+```
+
+### Why This Difference?
+
+**Value Objects** are used when multiple primitives represent one cohesive concept:
+
+#### Address Could Have Been Primitives:
+
+```typescript
+interface IHost extends IEntity {
+  userId: UUID;
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
+  
+  // Scattered primitives
+  country: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  street: string;
+}
+```
+
+**Problems:**
+- Primitive obsession: Five separate fields for one concept
+- Scattered validation: Address rules mixed with Host validation
+- Hard to reuse: Other entities duplicate these fields
+- No encapsulation: Can't enforce country-specific rules (US addresses need state, UK addresses don't)
+
+#### Instead, Extract a Value Object:
+
+```typescript
+interface IHost extends IEntity {
+  userId: UUID;
+  dob: O.Option<Date>;
+  phoneNumber: O.Option<number>;
+  profileImage: O.Option<string>;
+  
+  // Cohesive value object
+  address: Address;
+  socialLinks: SocialLinks;
+}
+```
+
+**Benefits:**
+- **Conceptual integrity**: All address fields stay together
+- **Encapsulated validation**: Address validates itself
+- **Reusability**: User, Organization all reuse Address
+- **Type safety**: Can't pass individual strings where Address expected
+
+
+### Value Object Implementation
+
+A value object follows the same boundary patterns as entities:
+
+```typescript
+// address.vo.ts
+export const AddressSchema = S.Struct({
+  country: S.String,
+  city: S.String,
+  state: S.optional(S.String),
+  zipCode: S.String,
+  street: S.optional(S.String)
+});
+
+export type AddressType = S.Schema.Type<typeof AddressSchema>;
+export type SerializedAddress = S.Schema.Encoded<typeof AddressSchema>;
+
+export class Address {
+  readonly country: string;
+  readonly city: string;
+  readonly state: O.Option<string>;
+  readonly zipCode: string;
+  readonly street: O.Option<string>;
+
+  private constructor(data: AddressType) {
+    this.country = data.country;
+    this.city = data.city;
+    this.state = data.state;
+    this.zipCode = data.zipCode;
+    this.street = data.street;
+  }
+
+  static create(input: SerializedAddress): E.Effect<Address, AddressError, never> {
+    return pipe(
+      S.decodeUnknown(AddressSchema)(input),
+      E.flatMap((data) => {
+        // Address-specific validation
+        if (!AddressGuards.isValidZipCode(data.country, data.zipCode)) {
+          return E.fail(new AddressValidationError("Invalid zip code"));
+        }
+        return E.succeed(new Address(data));
+      })
+    );
+  }
+
+  serialize(): SerializedAddress {
+    return {
+      country: this.country,
+      city: this.city,
+      state: optionToMaybe(this.state),
+      zipCode: this.zipCode,
+      street: optionToMaybe(this.street)
+    };
+  }
+}
+```
+
+### Integration with Host
+
+Value objects are created independently in the factory method:
+
+```typescript
+static create(input: SerializedHost): E.Effect<Host, HostError, never> {
+  return pipe(
+    S.decodeUnknown(HostSchema)(input),
+    E.flatMap((data) => {
+      // Create value objects with their own validation
+      return E.all([
+        Address.create(input.address),
+        SocialLinks.create(input.socialLinks)
+      ]).pipe(
+        E.map(([address, socialLinks]) => 
+          new Host(data, address, socialLinks))
+      );
+    })
+  );
+}
+```
+
+### Decision Guide
+
+**Use primitives when:**
+- Single atomic concept (phoneNumber, age, email)
+- No related fields to validate together
+
+**Use value objects when:**
+- Multiple primitives form one concept (Address)
+- Has its own validation rules
+- Will be reused across entities
+
+---
 
 
