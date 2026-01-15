@@ -15,13 +15,8 @@ This section demonstrates the step-by-step evolution of a Host entity from basic
 
 ## !!steps Foundation - Interface and Basic Class
 
-We’ll start from the very beginning: what does a Host look like?
-In this step we:
-- Define `IHost` interface that describes the shape of a Host
-- Create a Host class that implements IHost
-- Extend BaseEntity so every Host automatically gets an id, createdAt, and updatedAt, plus built-in serialization helpers
-- Not sure what BaseEntity gives you?
-- Check Core Utilities → Base Entity below for the full field list and helper methods.
+BaseEntity provides id, createdAt, updatedAt and serialization helpers. 
+This step defines IHost interface and Host class to describe the host entity structure.
 
 ```typescript !
 import { BaseEntity, IEntity } from "@domain/utils/base.entity";
@@ -43,13 +38,10 @@ export class Host extends BaseEntity implements IHost {
 }
 ```
 
-## !!steps Adding Properties with Proper Types
-With the skeleton in place, we can start adding real fields.
+## !!steps Adding core Properties with refined types
 
- Here we:
-- Add core properties like userId, dob, phoneNumber, address, socialLinks, and profileImage
-- Wire them up to the right refined types (for example UUID for userId and Address / SocialLinks value objects)
-- The refined types we use here (like UUID) are explained in Core Utilities → Refined Types.
+Refined types ensure userId is a valid UUID and address is a structured value object. 
+This step adds userId, dob, phoneNumber, address, socialLinks, and profileImage to the Host class.
 
 ```typescript !
 // !collapse(1:5) collapsed
@@ -81,13 +73,8 @@ export class Host extends BaseEntity implements IHost {
 ```
 
 ## !!steps Making Properties Optional with Option&lt;T&gt;
-Real data is messy: sometimes a host hasn’t added their phone number or profile image yet.
-
-To handle this safely, we:
-- wrap optional properties in `Option<T>`
-
-If `Option<T>` is new to you, read it as “this value might be there, or it might be missing.”  
-For a deeper understanding of how `Option` works, check the official `Effect` documentation.
+Option&lt;T&gt; makes missing values explicit and type-safe. 
+This step wraps dob, phoneNumber, and profileImage in Option to handle optional host data.
 
 
 ```typescript !
@@ -123,11 +110,8 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Empty Constructor Setup
 
-Our entity now has fields, but we still need a clean way to create it.
-- In this step we:
-- Introduce a constructor that accepts raw input data and value objects
-- Call `super()` to initialize everything from BaseEntity
-- Keep the body intentionally minimal so we can evolve it in later steps
+Constructors accept raw input and initialize BaseEntity fields via super(). 
+This step adds an empty constructor that will be progressively filled with validation and assignment logic.
 
 
 ```typescript !
@@ -172,10 +156,8 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Adding Computed Properties
 
-Hosts often need to know if their profile is “complete” for business logic.
-
-- We add a computed property called `hasCompleteProfile`.
-- This property uses our `Option<T>` fields to decide whether the profile is complete.
+hasCompleteProfile checks if required profile fields are present for business rules. 
+This step returns true when dob, phoneNumber, and profileImage all contain values.
 
 ```typescript !
 // !collapse(1:6) collapsed
@@ -224,10 +206,8 @@ export class Host extends BaseEntity implements IHost {
  
 ## !!steps Creating SerializedHost Type
 
-
-- We need a way to represent our entity when it’s sent to or received from external systems.
-- To do that, we’ll define a `SerializedHost` type just for data transfer.
-
+SerializedHost represents the entity format for external systems and databases. 
+This step defines a type with string id, nullable dates, and simplified value objects.
 Learn more: [Type Boundaries](/docs/best-practices/backend/data-on-boundries)
 
 ```typescript !
@@ -295,11 +275,8 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Introducing Maybe&lt;T&gt; Utility Type
 
-Our serialized type is starting to fill up with verbose unions like ` T | null | undefined`
-
-- To make this easier to read and reuse, we:
-- Introduce a generic `Maybe<T>` type alias `(T | Option<T> | null | undefined)`
-- Use `Maybe<T>` type that can handle the various ways data might arrive.
+Maybe&lt;T&gt; accepts T | Option&lt;T&gt; | null | undefined from different data sources. 
+This step replaces verbose unions with a single Maybe&lt;T&gt; type alias.
 
 ```typescript !
 // !collapse(1:5) collapsed
@@ -369,12 +346,8 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Adding normalizeMaybe Utility
 
-External data is messy: it can be a value, `null`, `undefined`, or already an `Option<T>` — we call that `Maybe<T>`.
-- Inside the domain, we want one clean shape.
-- So we always convert `Maybe<T>` → `Option<T>` at the boundaries.
-- A helper like `normalizeMaybe` does this once, handling all edge cases and keeping the rest of the code simple.
-
-
+normalizeMaybe converts Maybe&lt;T&gt; to Option&lt;T&gt; at entity boundaries to keep domain logic uniform. 
+This step handles null, undefined, existing Option, and raw values in one function.
 
 ```typescript !
 // !collapse(1:6) collapsed
@@ -454,10 +427,8 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Implementing Serialize Method  
 
-We now need to go in the reverse direction from `Option<T>` to `Maybe<T>`.
-- Take our clean internal `Option<T>` values.
-- Convert them back into the messy external formats used by APIs and databases.
-- Add a serialization step that performs this transformation safely and consistently.
+serialize converts internal Option&lt;T&gt; values back to external Maybe&lt;T&gt; format. 
+This step uses optionToMaybe to transform Host fields for APIs and databases.
 
 
 ```typescript !
@@ -564,12 +535,8 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Adding optionToMaybe Utility
 
-To keep serialize() readable and reusable across entities, we:
-
-- Introduce an `optionToMaybe` helper
-- Accept an `Option<T>` and return a `Maybe<T>` 
-- normalizeMaybe handles input → Option,
-- optionToMaybe handles Option → output.
+optionToMaybe centralizes the Option&lt;T&gt; to Maybe&lt;T&gt; transformation logic. 
+This step extracts the helper to reduce duplication across serialize methods.
 
 ```typescript !
 // !collapse(1:6) collapsed
@@ -672,11 +639,8 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Adding Basic Guards to Class
 
- Our entity needs basic validation rules.
-- We’ll start by adding simple guards directly inside the class.
-- These guards help ensure the data stays consistent and valid.
-- Fail fast when required fields are missing or inconsistent.
-- Later, we can refine and extend these guards into more powerful validation patterns.
+Guards ensure field values meet business rules before entity creation. 
+This step adds validatePhoneNumber and validateDateOfBirth as private static methods.
 
 
 ```typescript !
@@ -800,11 +764,8 @@ export class Host extends BaseEntity implements IHost {
 ```
 
 ## !!steps Using Guards in Constructor
-
-- When a `Host` is created, we want to reject bad data immediately.
-- We plug our validation guards directly into the constructor.
-- Every new `Host(...)` now runs through these checks.
-- Error handling is still basic for now; we’ll improve it later.
+Constructor validation prevents invalid entities from being created. 
+This step normalizes inputs then runs validatePhoneNumber and validateDateOfBirth before assignment.
 
 ```typescript !
 // !collapse(1:6) collapsed
@@ -940,9 +901,8 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Making Constructor Private with Factory Method
 
-Direct instantiation `new Host(...)` bypasses our validation. 
-- Make the constructor private and expose `Host.create(...)` instead.
-- Now every `Host` goes through the factory and is always validated.
+Private constructors prevent unvalidated entity creation via new. 
+This step adds Host.create factory method that always runs validation before instantiation.
 
 ```typescript !
 // !collapse(1:6) collapsed
@@ -1090,9 +1050,8 @@ export class Host extends BaseEntity implements IHost {
 
 ## !!steps Moving Guards to Separate File
 
-Our validation guards are growing and will be reused later.
-- We move them into a dedicated host.guards.ts file for better organization and reusability.
-
+Separate guard files enable reuse across domain and application layers. 
+This step moves validatePhoneNumber and validateDateOfBirth into HostGuards class.
 
 
 ```typescript !
@@ -1119,11 +1078,8 @@ export class HostGuards {
 
 ## !!steps Extracting Utility Types to Separate File
 
-Helpers like `Maybe<T>`, `normalizeMaybe`, and `optionToMaybe` are now used in multiple places.
-
-- We move them into `domain/utils/utils.ts`.
-- This turns them into shared utilities for the entire domain layer.
-- It also reduces duplication and keeps types/utilities in one place.
+Shared utilities prevent duplication across multiple entities. 
+This step moves Maybe&lt;T&gt;, normalizeMaybe, and optionToMaybe into domain/utils/utils.ts.
 
 ```typescript !
 // !mark(1:28) #22c55e
@@ -1155,9 +1111,8 @@ export const optionToMaybe = <T>(option: O.Option<T>): Maybe<T> => {
 
 ## !!steps Fixing the Messy Guards in Class
 
-Our `Host.create(...)` factory now uses the external guard functions.
-- We normalize input with `normalizeMaybe` and then validate with `HostGuards`.
-- Instead of throwing generic Error, we throw specific `HostValidationError` types.
+Factory methods compose normalizeMaybe with HostGuards validators and throw HostValidationError. 
+This step replaces inline validation with external guard calls.
 
 ```typescript !
 // !collapse(1:8) collapsed
@@ -1243,9 +1198,8 @@ export class Host extends BaseEntity implements IHost {
 ```
 
 ## !!steps The Problem with Manual Encoding/Decoding
-By now, we’re feeling the pain of doing serialization by hand in lots of places.
-- It’s becoming repetitive, hard to maintain, and easy to mess up.
-- Let's examine what's wrong with our current approach before we fix it.
+Manual serialization creates repetitive code, type gaps, and exception-based errors. 
+This step lists the issues we will solve with Effect Schema.
 
 ```typescript !
 /*
@@ -1275,13 +1229,8 @@ serialize(): SerializedHost {
 
 ## !!steps Say Goodbye to Manual Serialization - Introducing Effect Schema
 
-Here's a better way - `Effect Schema` can automatically handle types, validation, and transformations.
-- We start with a simple PersonSchema example.
-- From that schema, we automatically get:
-  - runtime validation
-  - inferred TypeScript types
-  - encoded (serialized) types
-- This shows how schemas can replace a lot of manual boilerplate.
+Effect Schema derives types and validation from a single definition. 
+This step shows PersonSchema example that automatically generates types, validation, and transformations.
 
 ```typescript !
 // !collapse(1:9) collapsed
@@ -1316,8 +1265,8 @@ const validatePerson = S.decodeUnknown(PersonSchema); // !info[/S\.decodeUnknown
 
 ## !!steps Creating Host Schema
 
-Let’s rebuild our `Host` using a schema-first `HostSchema` definition.
-- This single schema will replace all the manual types and validation logic we wrote earlier.
+HostSchema replaces manual types and validation with declarative field definitions. 
+This step defines schema with StringToUUID, Optional fields, and composed value object schemas.
 
 
 ```typescript !
@@ -1356,10 +1305,8 @@ const HostSchema = S.Struct({
 
 ## !!steps Deriving Types from Schema
 
-The magic happens here:
-- The schema now auto-generates all the types we previously wrote by hand.
-- We no longer need to manually define parallel TypeScript types.
-- Types and implementations stay automatically in sync with the schema.
+Schema.Type and Schema.Encoded automatically generate runtime and serialized types. 
+This step eliminates manual HostType and SerializedHost definitions by deriving them from HostSchema.
 
 ```typescript !
 // !collapse(1:12) collapsed
@@ -1403,11 +1350,8 @@ export type SerializedHost = Omit<S.Schema.Encoded<typeof HostSchema>, "address"
 ```
 
 ## !!steps Integrating Guards into Schema
-Our validation guards are now composed directly into HostSchema.
-
-- Fields like dob, phoneNumber, and profileImage use pipe to attach guard logic.
-- Validation becomes declarative
-- This removes imperative guard calls from the entity and centralizes validation in the schema.
+Schema.pipe integrates validation directly into field definitions. 
+This step adds HostGuards.ValidDateOfBirth, ValidPhoneNumber, and ValidProfileImagePath to schema fields.
 
 ```typescript !
 // !collapse(1:12) collapsed
@@ -1443,8 +1387,8 @@ const HostSchema = S.Struct({
 
 ## !!steps Simplified Entity with Effect Schema
 
-- With the schema-derived types, the entity constructor becomes much simpler.
-- We get rid of manual conversions and gain type-safe data from the very start.
+Schema-derived types eliminate manual Option conversions in constructors. 
+This step assigns HostType fields directly without normalizeMaybe or type casting.
 
 ```typescript !
 // !collapse(1:12) collapsed
@@ -1515,9 +1459,8 @@ export class Host extends BaseEntity implements IEntity {
 
 ## !!steps Effect-Based Factory Method
 
-- We wrap the whole `create a Host` flow in an `Effect` instead of throwing errors in the constructor.
-- The pipeline is: `S.decodeUnknown(HostSchema)(input)` → run domain guards → create value objects → return `Host`.
-- If any step fails, the `Effect` returns a typed `HostError`, giving callers clean, type-safe error handling.
+Effect&lt;Host, HostError, never&gt; returns typed errors instead of throwing exceptions. 
+This step composes S.decodeUnknown, guards, and value object creation in a single pipeline.
 
 
 ```typescript !
@@ -1616,10 +1559,8 @@ export class Host extends BaseEntity implements IEntity {
 
 ## !!steps Simplified Serialization
 
-Now that the schema knows everything about Host, it can also handle serialization for us.
-
-- Our serialized() method becomes a single call to S.encode(HostSchema)(this) wrapped in an Effect.
-- No more manual field mapping: add a field to the schema and it automatically shows up in the serialized output.
+S.encode(HostSchema) serializes entities without manual field mapping. 
+This step replaces the multi-line serialize method with a single Effect-returning call.
 
 ```typescript !
 // !collapse(1:12) collapsed
