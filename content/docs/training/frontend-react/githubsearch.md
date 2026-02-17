@@ -14,9 +14,8 @@ You are required to build a simple single page application built with
 
 - React.js
 - [Custom Hooks](https://reactjs.org/docs/hooks-custom.html)
-- Redux
-- [React Router](https://reactrouter.com/)
-- AntD using Design Tokens for UI.
+- [Tanstack react query](https://tanstack.com/query/latest/docs/react/overview)
+-  [Pallas UI](https://pallas-ui-docs.vercel.app/), using its components and design tokens (and custom [Panda CSS](https://panda-css.com/) tokens and recipes, if necessary).
 
 That allows the users to search the **users** or **repositories** or **issues** on GitHub. The results will be fetched from the GitHub API.
 
@@ -28,7 +27,7 @@ There will be two input fields, on search field for the user to type the text an
 
 ![](./assets/mockup-1.png)
 
-When the user starts typing into the input, make an API call to fetch the results and display them in the form of grid below it. The data should be cached in the store and persisted via redux-persist and no more API calls should be made if we already have the results for the search term.
+When the user starts typing into the input, make an API call to fetch the results and display them in the form of grid below it. The data should be cached and persisted using React Query’s caching mechanisms and no more API calls should be made if we already have the results for the search term.
 
 Here are some of the items that you should take care of
 
@@ -61,6 +60,6 @@ Your work will be evaluated primarily on:
 - Cleanliness of the code
 - Use modern ES6+ syntax, async/await, elegant & readable code
 - All the edge cases have been handled
-- Proper use of AntD design tokens and theme configurations.
+- Proper use of Pallas UI components, design tokens and theme configurations.
 - Use design tokens in such a way that changing a design token should reflect across the app.
 - `README.md` file explaining your high level solution and any decisions you made and the reasons behind them
